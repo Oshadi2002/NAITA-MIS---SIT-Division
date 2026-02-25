@@ -1,0 +1,122 @@
+Build a full-stack web application using:
+- Frontend: React (JSX) + React Router + Axios + simple clean UI (no heavy UI library unless needed)
+- Backend: Django + Django REST Framework + JWT Auth
+- Database: SQLite (default) with easy switch to PostgreSQL
+- Roles: Administrator (main role), Inspector, University Coordinator
+
+Project Name: Placement Seminar Management System
+
+Core Features & Workflow:
+1) Authentication + Role based access
+- Users login with email + password
+- Roles: ADMIN, INSPECTOR, UNIVERSITY_COORDINATOR
+- Use JWT (access + refresh)
+- Frontend should store token securely (localStorage is ok)
+- Protected routes based on role
+
+2) University Coordinator features
+- Create Placement Seminar Request
+  Fields:
+    - university_name (auto from logged user profile)
+    - coordinator_name (auto)
+    - student_count (number)
+    - preferred_dates (array of 1-3 dates user can choose)
+    - location (text)
+    - notes (optional)
+- View own requests + status timeline
+  Status values: PENDING, APPROVED, REJECTED, NEED_CHANGES, INSPECTOR_CONFIRMED, COMPLETED
+- If admin requests changes, coordinator can edit and resubmit
+
+3) Administrator features (Main role)
+- View all placement seminar requests
+- Approve / Reject / Need changes with message
+- Assign Inspector to a request
+- Choose final seminar date & time
+- Confirm seminar details:
+    - date_time
+    - location
+    - student_count
+    - university
+    - assigned inspector
+- Send seminar details to Inspector (as a record/notification inside system)
+- User Management:
+  - Create University Coordinator accounts (e.g., “Colombo University Coordinator”)
+  - Create Inspector accounts
+  - View list of users and roles
+  - Reset user password (basic admin action)
+
+4) Inspector features
+- View assigned seminar details
+- Inspector can:
+  - Confirm seminar (status -> INSPECTOR_CONFIRMED)
+  - Or request changes / provide reason (status -> NEED_CHANGES with inspector message)
+- After seminar:
+  - Submit completion message/report:
+      - completion_message
+      - optional file upload (PDF/image) OR skip file upload if too complex
+  - Status -> COMPLETED
+
+Backend Requirements (Django):
+- Use Django REST Framework
+- Models:
+  - User (custom user with email login) + role field
+  - University (optional) or store university_name in profile
+  - SeminarRequest model with fields above + status + timestamps
+  - SeminarSchedule fields: final datetime, assigned inspector, etc. (can be part of SeminarRequest)
+  - Messages/Notifications model (simple): to_user, request, title, body, created_at, read flag
+- Permissions:
+  - Coordinator can only access their own requests
+  - Admin can access everything
+  - Inspector can access only assigned requests
+- Endpoints (REST):
+  - /api/auth/register (admin only create users) OR admin endpoint
+  - /api/auth/login
+  - /api/auth/me
+  - /api/users (admin CRUD)
+  - /api/requests (coordinator create + list own; admin list all)
+  - /api/requests/:id (role-based detail)
+  - /api/requests/:id/admin-action (approve/reject/need-changes, assign inspector, set datetime)
+  - /api/requests/:id/inspector-action (confirm/request-change)
+  - /api/requests/:id/complete (inspector completion message)
+  - /api/notifications (list for logged user, mark as read)
+
+Frontend Requirements (React JSX):
+- Pages:
+  - Login
+  - Dashboard (role-specific)
+  - Coordinator: Create Request, My Requests, Request Detail
+  - Admin: All Requests, Request Detail (with actions), User Management
+  - Inspector: Assigned Requests, Request Detail (confirm/request changes), Completion Form
+  - Notifications panel
+- Components:
+  - ProtectedRoute with role check
+  - Sidebar based on role
+  - Reusable Table + Form components
+- UI:
+  - Simple, clean, responsive
+  - Use basic CSS or Tailwind (Tailwind ok if setup easy)
+
+Replit Setup Requirements:
+- Provide clear instructions in README.md
+- Use separate folders:
+  - backend/
+  - frontend/
+- Provide scripts to run both:
+  - backend: python manage.py runserver 0.0.0.0:8000
+  - frontend: npm start
+- Provide sample seed data command:
+  - Create default admin user + one inspector + one university coordinator
+- Ensure CORS setup so frontend can call backend
+- Use environment variables for API URL and secret key
+
+Deliverables:
+- Full working code for backend + frontend
+- All migrations included
+- A short README with steps: install, migrate, create superuser/seed, run backend, run frontend
+- Make sure the app works end-to-end in Replit
+
+Also:
+- All statuses must be visible as a timeline/history log for each request
+- Every admin or inspector action should create a notification to the relevant user
+
+Now generate the complete project code with all files.
