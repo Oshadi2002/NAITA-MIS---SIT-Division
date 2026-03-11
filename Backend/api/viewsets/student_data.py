@@ -1,11 +1,15 @@
 from rest_framework import viewsets, status, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.http import FileResponse
+from django.conf import settings
+import os
 from ..models import FormLink, StudentSubmission
 from ..serializers import FormLinkSerializer, StudentSubmissionSerializer
 from .base import CsrfExemptSessionAuthentication
 from django.utils import timezone
 from django.db import IntegrityError
+from api.utils.pdf_generator import generate_placement_letter
 
 class FormLinkViewSet(viewsets.ModelViewSet):
     # queryset = FormLink.objects.all() # Replaced by get_queryset
@@ -192,23 +196,141 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
 
         writer = csv.writer(response)
         
-        # Headers
+        # Headers exactly matching requirements
         headers = [
-            'ID', 'Full Name', 'Initials Name', 'NIC', 'Gender', 'Email', 'Contact', 
-            'University', 'Subject', 'Batch', 'District', 'Reg No', 'Created At',
-            'Training Establishment', 'Training Address', 'Training District', 
-            'Start Date', 'End Date', 'Duration', 'OIC'
+            'Timestamp',
+            'Email Address',
+            '1. Name of the University / Institute with location ( EX - Advanced Technological Institute Gampaha)',
+            '2. Degree / NVQ 5 / NVQ 6 (Selection)',
+            '3. Degree or Diploma name',
+            '4. District of the Training Work Site - (Ex - Kandy)',
+            '5. Divisional Secretariat of the Training Work Site - (Ex - Kundasale)',
+            '6.  University Registration Number',
+            '7. Initials with Name (Ex:  A.S.N. Bulegoda  ) - Use for your NAITA Registration & NAITA Certificate',
+            '8.  Full Name - BLOCK LETTERS ONLY (Ex: ARACHCHIGE SHASHINI NADUNYA BULEGODA) Use for your NAITA Registration & NAITA Certificate"',
+            '9.  Gender(M/F)',
+            '10. National ID Number (Ex: 888562273V)',
+            '11.  Contact Number of Student (07x-xxxxxxx)',
+            '12.  Permanent Address (Undergraduate) Ex: - ""Nayana""No,02/01, Galle Rd, Kaluthara."',
+            '13. Designation of the Authorized officer Training Establishment - Head Office (Ex- HR Manager,)',
+            '14. Name of the Training Establishment - Head Office (Ex- Central Engineering Service (Pvt) Ltd,)',
+            '15. Address of the Training Establishment - Head Office (Ex-No 415, Bauddhaloka Mawatha, Colombo-07)',
+            '16.  E -mail Address of the Training Establishment (Head Office)',
+            '17.  Telephone Number of the Training Establishment (Head Office)',
+            '18.  Name of the Training Work Site (Ex- Central Engineering Service (Pvt) Ltd,)',
+            '19.  Address of the Training Work Site (Ex- No 132/A, Digana Road, Kundasale.)',
+            '20.  Designation & Name of the Officer In-charge Work Site',
+            '21.  Phone Number of the Officer In-charge Work Site',
+            '22.  University / Institute Batch (Year)',
+            '23. Field of Training',
+            '24.  Training Duration (no of months or weeks)',
+            '25.  Date of Commencement of Industrial Training',
+            '26.  Date of Completion of Industrial Training',
+            '27.  NIC Copy',
+            '28. NAITA Training Contract Form PDF (After sign by the Training Establishment)',
+            '29.  NAITA Training Work site Form PDF (After sign by the Training Establishment)',
+            '30. NAITA Placement Letter (PDF)',
+            'Checked ok',
+            'Register number',
+            'Column 1'
         ]
         writer.writerow(headers)
 
         # Data
         queryset = self.filter_queryset(self.get_queryset())
+        
+        def build_url(file_field):
+            if file_field and hasattr(file_field, 'url'):
+                return request.build_absolute_uri(file_field.url)
+            return ''
+
         for s in queryset:
             writer.writerow([
-                s.id, s.full_name, s.initials_name, s.nic, s.gender, s.email, s.contact_number,
-                s.university, s.subject, s.batch_year, s.district, s.student_reg_no, s.submitted_at,
-                s.training_establishment, s.training_address, s.training_district,
-                s.training_start_date, s.training_end_date, s.training_duration, s.officer_in_charge
+                s.submitted_at.strftime("%Y-%m-%d %H:%M:%S") if s.submitted_at else '',
+                s.email,
+                s.university,
+                s.degree_nvq_level,
+                s.degree_diploma_name,
+                s.training_district,
+                s.divisional_secretariat,
+                s.student_reg_no,
+                s.initials_name,
+                s.full_name,
+                s.gender,
+                s.nic,
+                s.contact_number,
+                s.permanent_address,
+                s.head_office_designation or '',
+                s.head_office_name or '',
+                s.head_office_address or '',
+                s.head_office_email or '',
+                s.head_office_phone or '',
+                s.training_establishment,
+                s.training_address,
+                s.officer_in_charge,
+                s.officer_in_charge_contact or '',
+                s.batch_year,
+                s.field_of_training,
+                s.training_duration,
+                s.training_start_date.strftime("%Y-%m-%d") if s.training_start_date else '',
+                s.training_end_date.strftime("%Y-%m-%d") if s.training_end_date else '',
+                build_url(s.nic_copy),
+                build_url(s.agreement_form),
+                build_url(s.work_site_form),
+                build_url(s.placement_letter),
+                'Yes' if s.checked_ok else 'No',
+                s.admin_reg_number or '',
+                s.column_1 or ''
             ])
 
         return response
+
+    # ✅ ADD THIS ACTION - Generate Placement Letter PDF
+    @action(detail=True, methods=['get'], url_path='generate-letter')
+    def generate_letter(self, request, pk=None):
+        """
+        Generate placement letter PDF for a student
+        Only accessible by ADMIN and UNIVERSITY_COORDINATOR
+        """
+        # Check permission
+        if request.user.role not in ['ADMIN', 'UNIVERSITY_COORDINATOR']:
+            return Response(
+                {"detail": "Only administrators or coordinators can generate placement letters."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            # Get the student
+            student = self.get_object()
+            
+            # Create file name with student details
+            safe_name = student.full_name.replace(' ', '_')[:30]
+            file_name = f"placement_letter_{safe_name}_{student.student_reg_no}_{student.id}.pdf"
+            
+            # Create file path in media/placement_letters directory
+            file_path = os.path.join(settings.MEDIA_ROOT, 'placement_letters', file_name)
+            
+            # Generate PDF and save to file
+            generate_placement_letter(student, file_path)
+            
+            # Return file response
+            response = FileResponse(
+                open(file_path, 'rb'), 
+                as_attachment=True, 
+                filename=file_name
+            )
+            
+            return response
+            
+        except StudentSubmission.DoesNotExist:
+            return Response(
+                {"detail": "Student not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {"detail": f"Error generating PDF: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

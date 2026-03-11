@@ -43,6 +43,14 @@ const studentFormSchema = z.object({
     training_duration: z.string().min(1, "Duration is required"),
     field_of_training: z.string().min(2, "Field of Training is required"),
 
+    // Head Office
+    head_office_designation: z.string().optional(),
+    head_office_name: z.string().optional(),
+    head_office_address: z.string().optional(),
+    head_office_email: z.string().email("Invalid email").optional().or(z.literal('')),
+    head_office_phone: z.string().optional(),
+    officer_in_charge_contact: z.string().optional(),
+
     // Files
     // For file inputs, we'll handle them manually or use a refined schema if using a wrapper
     // We'll treat them as required in the UI logic
@@ -369,6 +377,57 @@ export default function StudentForm() {
                                             <FormItem>
                                                 <FormLabel>Duration</FormLabel>
                                                 <FormControl><Input placeholder="e.g. 6 Months" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Head Office Details */}
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2"><div className="w-1 h-6 bg-primary rounded-full" /> Head Office Details</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="head_office_name" render={({ field }) => (
+                                            <FormItem className="col-span-2">
+                                                <FormLabel>Name of the Training Establishment (Head Office)</FormLabel>
+                                                <FormControl><Input placeholder="e.g. Central Engineering Service (Pvt) Ltd" {...field} value={field.value || ''} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="head_office_designation" render={({ field }) => (
+                                            <FormItem className="col-span-2">
+                                                <FormLabel>Designation of the Authorized officer (Head Office)</FormLabel>
+                                                <FormControl><Input placeholder="e.g. HR Manager" {...field} value={field.value || ''} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="head_office_address" render={({ field }) => (
+                                            <FormItem className="col-span-2">
+                                                <FormLabel>Address of the Training Establishment (Head Office)</FormLabel>
+                                                <FormControl><Textarea placeholder="Head Office Address" {...field} value={field.value || ''} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="head_office_email" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>E-mail Address (Head Office)</FormLabel>
+                                                <FormControl><Input type="email" placeholder="head.office@example.com" {...field} value={field.value || ''} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="head_office_phone" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Telephone Number (Head Office)</FormLabel>
+                                                <FormControl><Input placeholder="Phone Number" {...field} value={field.value || ''} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="officer_in_charge_contact" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Phone Number of the Officer In-charge Work Site</FormLabel>
+                                                <FormControl><Input placeholder="Phone Number" {...field} value={field.value || ''} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />

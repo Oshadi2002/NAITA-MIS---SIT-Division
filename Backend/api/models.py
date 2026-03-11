@@ -97,13 +97,27 @@ class StudentSubmission(models.Model):
     # Training Info
     training_district = models.CharField(max_length=100)
     divisional_secretariat = models.CharField(max_length=100)
-    training_establishment = models.CharField(max_length=255)
-    training_address = models.TextField()
-    officer_in_charge = models.CharField(max_length=255)
+    
+    # Head Office Info
+    head_office_designation = models.CharField(max_length=255, null=True, blank=True)
+    head_office_name = models.CharField(max_length=255, null=True, blank=True)
+    head_office_address = models.TextField(null=True, blank=True)
+    head_office_email = models.EmailField(null=True, blank=True)
+    head_office_phone = models.CharField(max_length=20, null=True, blank=True)
+    
+    # Work Site Info
+    training_establishment = models.CharField(max_length=255) # Name of training work site
+    training_address = models.TextField() # Address of training work site
+    officer_in_charge = models.CharField(max_length=255) # Designation & Name of officer in-charge work site
+    officer_in_charge_contact = models.CharField(max_length=20, null=True, blank=True)
+    
     training_start_date = models.DateField()
     training_end_date = models.DateField()
     training_duration = models.CharField(max_length=50)
     field_of_training = models.CharField(max_length=255)
+
+    # Extra Data
+    column_1 = models.CharField(max_length=255, null=True, blank=True)
 
     # Files (Storing paths)
     nic_copy = models.FileField(upload_to='student_docs/nic/')
@@ -193,6 +207,7 @@ class CoordinatorInvite(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_invites')
     status = models.CharField(max_length=20, default='PENDING', choices=[('PENDING', 'Pending'), ('USED', 'Used')])
     whatsapp_number = models.CharField(max_length=20, null=True, blank=True)
+    email = models.EmailField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):

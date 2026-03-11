@@ -19,11 +19,9 @@ class AuthViewSet(viewsets.ViewSet):
             
             user = authenticate(username=username, password=password)
             if not user:
-                try:
-                    user_obj = User.objects.get(email=username)
+                user_obj = User.objects.filter(email=username).first()
+                if user_obj:
                     user = authenticate(username=user_obj.username, password=password)
-                except User.DoesNotExist:
-                    pass
 
             if user:
                 print(f"DEBUG: Authentication successful - user: {user.username}")

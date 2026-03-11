@@ -7,14 +7,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Plus, Copy, ExternalLink, CheckCircle2, XCircle, Search, Folder, ChevronRight, GraduationCap, MapPin, BookOpen, Calendar, Home, School, Trash2, Eye, FileText, Download } from "lucide-react";
+import {
+    ArrowLeft, Plus, Copy, ExternalLink, CheckCircle2, XCircle,
+    Search, Folder, ChevronRight, GraduationCap, MapPin, BookOpen,
+    Calendar, Home, School, Trash2, Eye, FileText, Download, Mail, Send, Loader2
+} from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import axios from "axios";
-import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { NovationRequestDialog } from "@/components/requests/NovationRequestDialog";
 
 interface FormLink {
+    is_active: boolean;
     id: string;
     university: string;
     subject: string;
@@ -39,6 +45,32 @@ interface StudentSubmission {
     agreement_form: string | null;
     work_site_form: string | null;
     placement_letter: string | null;
+    initials_name: string;
+    gender: string;
+    email: string;
+    contact_number: string;
+    permanent_address: string;
+    degree_nvq_level: string;
+    degree_diploma_name: string;
+    training_district: string;
+    divisional_secretariat: string;
+    training_establishment: string;
+    training_address: string;
+    officer_in_charge: string;
+    training_start_date: string;
+    training_end_date: string;
+    training_duration: string;
+    field_of_training: string;
+    head_office_designation: string | null;
+    head_office_name: string | null;
+    head_office_address: string | null;
+    head_office_email: string | null;
+    head_office_phone: string | null;
+    officer_in_charge_contact: string | null;
+    column_1: string | null;
+    finalized_agreement_form: string | null;
+    is_agreement_sent: boolean;
+    agreement_sent_at: string | null;
 }
 
 // Navigation Levels
@@ -223,13 +255,14 @@ export default function StudentDataDashboard() {
         </div>
     );
 
-    const StudentListView = ({ openEdit, openNovation }: { openEdit: (s: StudentSubmission) => void, openNovation: (s: StudentSubmission) => void }) => {
+    const StudentListView = ({ openEdit, openNovation, isDownloadingExcel, isDownloadingZip, handleDownloadExcel, handleDownloadZip }: { openEdit: (s: StudentSubmission) => void, openNovation: (s: StudentSubmission) => void, isDownloadingExcel: boolean, isDownloadingZip: boolean, handleDownloadExcel: () => void, handleDownloadZip: () => void }) => {
         // Final Search Filter inside the list view
         const displayStudents = filteredStudents.filter(s =>
             s.full_name.toLowerCase().includes(search.toLowerCase()) ||
             s.nic.toLowerCase().includes(search.toLowerCase()) ||
             s.student_reg_no.toLowerCase().includes(search.toLowerCase())
         );
+
 
         return (
             <Card className="min-h-[600px]">
@@ -241,9 +274,65 @@ export default function StudentDataDashboard() {
                                 {navPath.year} / {navPath.university} / {navPath.district} / {navPath.subject}
                             </CardDescription>
                         </div>
-                        <div className="relative w-full sm:w-64">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Search Name, NIC..." className="pl-8" value={search} onChange={e => setSearch(e.target.value)} />
+                        <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto mt-2 sm:mt-0 p-3 bg-muted/30 rounded-xl border border-border/50 backdrop-blur-sm">
+                            {(currentUser?.role === 'ADMIN' || currentUser?.role === 'UNIVERSITY_COORDINATOR') && (
+                                <>
+                                    <div className="flex flex-col gap-1 items-start mr-2">
+                                        <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground ml-1">Export Data</span>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleDownloadExcel}
+                                                disabled={isDownloadingExcel}
+                                                title="Download filtered student details as Excel sheet"
+                                                className="h-10 px-4 border-emerald-200/50 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all font-semibold shadow-sm bg-white"
+                                            >
+                                                {isDownloadingExcel ? (
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                ) : (
+                                                    <FileText className="h-4 w-4 mr-2 text-emerald-600" />
+                                                )}
+                                                {isDownloadingExcel ? "Processing..." : "Export Excel"}
+                                            </Button>
+
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleDownloadZip}
+                                                disabled={isDownloadingZip || displayStudents.length === 0}
+                                                title="Download all placement letters as a ZIP archive"
+                                                className="h-10 px-4 border-blue-200/50 text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-all font-semibold shadow-sm bg-white"
+                                            >
+                                                {isDownloadingZip ? (
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                ) : (
+                                                    <Folder className="h-4 w-4 mr-2 text-blue-600" />
+                                                )}
+                                                {isDownloadingZip ? "Zipping..." : "Letters ZIP"}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <div className="h-10 w-px bg-border/50 mx-1 hidden sm:block" />
+                                </>
+                            )}
+                            <div className="flex flex-col gap-1 items-start w-full sm:w-64">
+                                <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground ml-1">Search Records</span>
+                                <div className="relative w-full">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground/70" />
+                                    <Input
+                                        placeholder="Search"
+                                        className="pl-9 h-10 bg-white shadow-sm border-border/50 focus-visible:ring-primary/20"
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                    />
+                                    {displayStudents.length > 0 && (
+                                        <Badge className="absolute right-2 top-2 h-6 text-[10px] bg-primary/10 text-primary border-none hover:bg-primary/10">
+                                            {displayStudents.length} {displayStudents.length === 1 ? 'result' : 'results'}
+                                        </Badge>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </CardHeader>
@@ -256,12 +345,13 @@ export default function StudentDataDashboard() {
                                 <TableHead>Status</TableHead>
                                 <TableHead>Checked</TableHead>
                                 <TableHead>Reg No</TableHead>
+                                <TableHead>Contract Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {displayStudents.map(student => (
-                                <TableRow key={student.id}>
+                                <TableRow key={student.id} className={student.is_agreement_sent ? "bg-green-50/50" : ""}>
                                     <TableCell>
                                         <div className="font-medium">{student.full_name}</div>
                                         <div className="text-xs text-muted-foreground">{student.nic} | {student.student_reg_no}</div>
@@ -298,21 +388,73 @@ export default function StudentDataDashboard() {
                                             <span className="text-sm font-mono">{student.admin_reg_number || '-'}</span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right flex justify-end gap-2">
-                                        {currentUser?.role === 'UNIVERSITY_COORDINATOR' && (
-                                            <Button variant="outline" size="sm" onClick={() => openNovation(student)}>
-                                                Req. Novation
+                                    <TableCell>
+                                        <Badge variant={student.is_agreement_sent ? "default" : "outline"} className={student.is_agreement_sent ? "bg-green-600" : ""}>
+                                            {student.is_agreement_sent ? "Complete" : "Pending"}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                            {/* PDF GENERATION BUTTON */}
+                                            {(currentUser?.role === 'ADMIN' || currentUser?.role === 'UNIVERSITY_COORDINATOR') && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => window.open(`/api/student-submissions/${student.id}/generate-letter/`, '_blank')}
+                                                    className="gap-1"
+                                                    title="Generate Placement Letter"
+                                                >
+                                                    <FileText className="h-4 w-4" />
+                                                    <span className="hidden sm:inline">PDF</span>
+                                                </Button>
+                                            )}
+
+                                            {/* Novation Request Button - Only for Coordinator */}
+                                            {currentUser?.role === 'UNIVERSITY_COORDINATOR' && (
+                                                <Button variant="outline" size="sm" onClick={() => openNovation(student)}>
+                                                    Req. Novation
+                                                </Button>
+                                            )}
+
+                                            {/* Finalize Contract Button - Only for Admin */}
+                                            {currentUser?.role === 'ADMIN' && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setFinalizingStudent(student)}
+                                                    className={`gap-1 ${student.is_agreement_sent ? "border-green-200 text-green-700 hover:bg-green-50" : ""}`}
+                                                    title="Finalize & Email Contract"
+                                                >
+                                                    <Mail className="h-4 w-4" />
+                                                    <span className="hidden sm:inline">Finalize</span>
+                                                </Button>
+                                            )}
+
+                                            {/* View Finalized Contract Button - For Admin and Coordinator */}
+                                            {student.is_agreement_sent && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => window.open(student.finalized_agreement_form!, '_blank')}
+                                                    className="gap-1 border-green-200 text-green-700 hover:bg-green-50"
+                                                    title="View Finalized Contract"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                    <span className="hidden sm:inline">Contract</span>
+                                                </Button>
+                                            )}
+
+                                            {/* Edit/View Button - For all roles */}
+                                            <Button variant="ghost" size="sm" onClick={() => openEdit(student)}>
+                                                {currentUser?.role === 'ADMIN' ? 'Edit' : 'View'}
                                             </Button>
-                                        )}
-                                        <Button variant="ghost" size="sm" onClick={() => openEdit(student)}>
-                                            {currentUser?.role === 'ADMIN' ? 'Edit' : 'View'}
-                                        </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
                             {displayStudents.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                                         No students found.
                                     </TableCell>
                                 </TableRow>
@@ -326,6 +468,66 @@ export default function StudentDataDashboard() {
 
     const [editingStudent, setEditingStudent] = useState<StudentSubmission | null>(null);
     const [novationStudent, setNovationStudent] = useState<StudentSubmission | null>(null);
+    const [finalizingStudent, setFinalizingStudent] = useState<StudentSubmission | null>(null);
+
+    // Download state lifted to parent to prevent StudentListView remounting on search state change
+    const [isDownloadingZip, setIsDownloadingZip] = useState(false);
+    const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
+
+    const handleDownloadZip = async () => {
+        const displayStudents = filteredStudents.filter(s =>
+            s.full_name.toLowerCase().includes(search.toLowerCase()) ||
+            s.nic.toLowerCase().includes(search.toLowerCase()) ||
+            s.student_reg_no.toLowerCase().includes(search.toLowerCase())
+        );
+        if (displayStudents.length === 0) return;
+        setIsDownloadingZip(true);
+        try {
+            const ids = displayStudents.map(s => s.id);
+            const response = await axios.post('/api/student-submissions/download-letters-zip/', { ids }, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'placement_letters.zip');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            toast({ title: "Download Started", description: "Your ZIP file is being downloaded." });
+        } catch (error) {
+            console.error("ZIP download error", error);
+            toast({ title: "Download Failed", description: "Could not generate ZIP.", variant: "destructive" });
+        } finally {
+            setIsDownloadingZip(false);
+        }
+    };
+
+    const handleDownloadExcel = async () => {
+        setIsDownloadingExcel(true);
+        try {
+            const response = await axios.get('/api/student-submissions/export_excel/', {
+                responseType: 'blob',
+                params: {
+                    batch_year: navPath.year,
+                    university: navPath.university,
+                    district: navPath.district,
+                    subject: navPath.subject
+                }
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'student_submissions.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            toast({ title: "Download Started", description: "Your Excel file is being downloaded." });
+        } catch (error) {
+            console.error("Excel download error", error);
+            toast({ title: "Download Failed", description: "Could not generate Excel file.", variant: "destructive" });
+        } finally {
+            setIsDownloadingExcel(false);
+        }
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in pb-12">
@@ -359,7 +561,6 @@ export default function StudentDataDashboard() {
                 )}
                 {activeTab === 'students' && currentUser?.role === 'ADMIN' && (
                     <div className="flex gap-2">
-                        {/* CSV Export Removed */}
                         <CreateStudentDialog onCreated={fetchData} />
                     </div>
                 )}
@@ -455,6 +656,10 @@ export default function StudentDataDashboard() {
                             <StudentListView
                                 openEdit={(s) => setEditingStudent(s)}
                                 openNovation={(s) => setNovationStudent(s)}
+                                isDownloadingExcel={isDownloadingExcel}
+                                isDownloadingZip={isDownloadingZip}
+                                handleDownloadExcel={handleDownloadExcel}
+                                handleDownloadZip={handleDownloadZip}
                             />
                             <EditStudentDialog
                                 student={editingStudent}
@@ -474,25 +679,21 @@ export default function StudentDataDashboard() {
                                     // optional: refresh
                                 }}
                             />
+                            <AgreementFormDialog
+                                student={finalizingStudent}
+                                open={!!finalizingStudent}
+                                onOpenChange={(open) => !open && setFinalizingStudent(null)}
+                                onSuccess={() => {
+                                    setFinalizingStudent(null);
+                                    fetchData();
+                                }}
+                            />
                         </>
                     )}
                 </div>
             )}
         </div>
     );
-}
-
-function StudentListView({ openEdit }: { openEdit: (s: StudentSubmission) => void }) {
-    // ... (this needs to be passed down or defined here to use 'filteredStudents' and 'search' from parent scope?)
-    // Actually, defining inside component causes re-render issues or prop drilling. 
-    // Better to keep StudentListView inline in main component or pass props.
-    // Reverting to inline rendering for simplicity in this replace block, 
-    // using the parent's `StudentListView` function but modifying it to accept the handler?
-    // No, the previous code had `StudentListView` defined INSIDE `StudentDataDashboard`.
-    // I will just modify the `StudentListView` definition inside `StudentDataDashboard` in the next replacement chunk if needed,
-    // OR simpler: `StudentListView` creates a closure over `filteredStudents` etc.
-    // It is defined INSIDE. So I can just use it.
-    return null; // Logic handled in main body replacement.
 }
 
 function EditStudentDialog({ student, open, onOpenChange, onSuccess }: { student: StudentSubmission | null, open: boolean, onOpenChange: (open: boolean) => void, onSuccess: () => void }) {
@@ -541,17 +742,19 @@ function EditStudentDialog({ student, open, onOpenChange, onSuccess }: { student
         }
     };
 
-    const FileLink = ({ label, fileUrl }: { label: string, fileUrl: string | null }) => {
+    const FileLink = ({ label, fileUrl, highlight }: { label: string, fileUrl: string | null, highlight?: boolean }) => {
         if (!fileUrl) return null;
         return (
-            <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
+            <div className={`flex items-center justify-between p-3 border rounded-md ${highlight ? 'bg-green-50 border-green-200' : 'bg-muted/20'}`}>
                 <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-medium">{label}</span>
+                    <FileText className={`h-5 w-5 ${highlight ? 'text-green-600' : 'text-primary'}`} />
+                    <span className={`text-sm font-medium ${highlight ? 'text-green-700' : ''}`}>{label}</span>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => window.open(fileUrl, '_blank')}>
-                    <Eye className="h-4 w-4 mr-2" /> View
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => window.open(fileUrl, '_blank')} className={highlight ? 'border-green-200 text-green-700 hover:bg-green-100' : ''}>
+                        <Eye className="h-4 w-4 mr-2" /> View
+                    </Button>
+                </div>
             </div>
         );
     };
@@ -566,40 +769,172 @@ function EditStudentDialog({ student, open, onOpenChange, onSuccess }: { student
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={onSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>Full Name</Label>
-                            <Input name="full_name" defaultValue={student.full_name} readOnly={!isAdmin} required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>NIC</Label>
-                            <Input name="nic" defaultValue={student.nic} readOnly={!isAdmin} required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Student Reg No</Label>
-                            <Input name="student_reg_no" defaultValue={student.student_reg_no} readOnly={!isAdmin} required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Admin Reg No</Label>
-                            <Input name="admin_reg_number" defaultValue={student.admin_reg_number || ''} readOnly={!isAdmin} placeholder="-" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>University</Label>
-                            <Input name="university" defaultValue={student.university} readOnly={!isAdmin} required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Subject</Label>
-                            <Input name="subject" defaultValue={student.subject} readOnly={!isAdmin} required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Batch Year</Label>
-                            <Input name="batch_year" defaultValue={student.batch_year} readOnly={!isAdmin} required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>District</Label>
-                            <Input name="district" defaultValue={student.district} readOnly={!isAdmin} required />
+                    {/* Personal Information */}
+                    <div className="space-y-4">
+                        <Label className="text-base font-semibold flex items-center gap-2"><div className="w-1 h-5 bg-primary rounded-full" /> Personal Information</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2 col-span-2 md:col-span-1">
+                                <Label>Full Name (Block Letters)</Label>
+                                <Input name="full_name" defaultValue={student.full_name} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2 col-span-2 md:col-span-1">
+                                <Label>Name with Initials</Label>
+                                <Input name="initials_name" defaultValue={student.initials_name} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>NIC</Label>
+                                <Input name="nic" defaultValue={student.nic} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Gender</Label>
+                                <Select name="gender" defaultValue={student.gender} disabled={!isAdmin} required>
+                                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Male">Male</SelectItem>
+                                        <SelectItem value="Female">Female</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Email</Label>
+                                <Input name="email" type="email" defaultValue={student.email} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Contact Number</Label>
+                                <Input name="contact_number" defaultValue={student.contact_number} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2 col-span-2">
+                                <Label>Permanent Address</Label>
+                                <Input name="permanent_address" defaultValue={student.permanent_address} readOnly={!isAdmin} required />
+                            </div>
                         </div>
                     </div>
+
+                    {/* Academic Information */}
+                    <div className="border-t pt-4 space-y-4">
+                        <Label className="text-base font-semibold flex items-center gap-2"><div className="w-1 h-5 bg-primary rounded-full" /> Academic Information</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Student Reg No</Label>
+                                <Input name="student_reg_no" defaultValue={student.student_reg_no} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Admin Reg No</Label>
+                                <Input name="admin_reg_number" defaultValue={student.admin_reg_number || ''} readOnly={!isAdmin} placeholder="-" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Degree/NVQ Level</Label>
+                                <Input name="degree_nvq_level" defaultValue={student.degree_nvq_level} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2 col-span-2 md:col-span-1">
+                                <Label>Degree/Diploma Name</Label>
+                                <Input name="degree_diploma_name" defaultValue={student.degree_diploma_name} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>University</Label>
+                                <Input name="university" defaultValue={student.university} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Subject</Label>
+                                <Input name="subject" defaultValue={student.subject} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Batch Year</Label>
+                                <Input name="batch_year" defaultValue={student.batch_year} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>District</Label>
+                                <Input name="district" defaultValue={student.district} readOnly={!isAdmin} required />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Training Details */}
+                    <div className="border-t pt-4 space-y-4">
+                        <Label className="text-base font-semibold flex items-center gap-2"><div className="w-1 h-5 bg-primary rounded-full" /> Training Details</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2 col-span-2">
+                                <Label>Training Establishment Name</Label>
+                                <Input name="training_establishment" defaultValue={student.training_establishment} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2 col-span-2">
+                                <Label>Training Address</Label>
+                                <Input name="training_address" defaultValue={student.training_address} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Training District</Label>
+                                <Input name="training_district" defaultValue={student.training_district} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Divisional Secretariat</Label>
+                                <Input name="divisional_secretariat" defaultValue={student.divisional_secretariat} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Officer In Charge (OIC)</Label>
+                                <Input name="officer_in_charge" defaultValue={student.officer_in_charge} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Field of Training</Label>
+                                <Input name="field_of_training" defaultValue={student.field_of_training} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Select OIC Contact</Label>
+                                <Input name="officer_in_charge_contact" defaultValue={student.officer_in_charge_contact || ''} readOnly={!isAdmin} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Start Date</Label>
+                                <Input name="training_start_date" type="date" defaultValue={student.training_start_date} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>End Date</Label>
+                                <Input name="training_end_date" type="date" defaultValue={student.training_end_date} readOnly={!isAdmin} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Duration</Label>
+                                <Input name="training_duration" defaultValue={student.training_duration} readOnly={!isAdmin} required />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Head Office Information */}
+                    <div className="border-t pt-4 space-y-4">
+                        <Label className="text-base font-semibold flex items-center gap-2"><div className="w-1 h-5 bg-primary rounded-full" /> Head Office Information</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2 col-span-2 md:col-span-1">
+                                <Label>Name of the Training Establishment (Head Office)</Label>
+                                <Input name="head_office_name" defaultValue={student.head_office_name || ''} readOnly={!isAdmin} />
+                            </div>
+                            <div className="space-y-2 col-span-2 md:col-span-1">
+                                <Label>Designation of Authorized Officer (Head Office)</Label>
+                                <Input name="head_office_designation" defaultValue={student.head_office_designation || ''} readOnly={!isAdmin} />
+                            </div>
+                            <div className="space-y-2 col-span-2">
+                                <Label>Address of the Training Establishment (Head Office)</Label>
+                                <Input name="head_office_address" defaultValue={student.head_office_address || ''} readOnly={!isAdmin} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>E-mail Address (Head Office)</Label>
+                                <Input name="head_office_email" type="email" defaultValue={student.head_office_email || ''} readOnly={!isAdmin} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Telephone Number (Head Office)</Label>
+                                <Input name="head_office_phone" defaultValue={student.head_office_phone || ''} readOnly={!isAdmin} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Extra Fields */}
+                    {isAdmin && (
+                        <div className="border-t pt-4 space-y-4">
+                            <Label className="text-base font-semibold flex items-center gap-2"><div className="w-1 h-5 bg-primary rounded-full" /> Extra Information</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Column 1</Label>
+                                    <Input name="column_1" defaultValue={student.column_1 || ''} readOnly={!isAdmin} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="border-t pt-4">
                         <Label className="mb-3 block text-base">Uploaded Documents</Label>
@@ -608,7 +943,10 @@ function EditStudentDialog({ student, open, onOpenChange, onSuccess }: { student
                             <FileLink label="Agreement Form" fileUrl={student.agreement_form} />
                             <FileLink label="Work Site Form" fileUrl={student.work_site_form} />
                             <FileLink label="Placement Letter" fileUrl={student.placement_letter} />
-                            {(!student.nic_copy && !student.agreement_form && !student.work_site_form && !student.placement_letter) && (
+                            {student.finalized_agreement_form && (
+                                <FileLink label="Finalized Contract" fileUrl={student.finalized_agreement_form} highlight />
+                            )}
+                            {(!student.nic_copy && !student.agreement_form && !student.work_site_form && !student.placement_letter && !student.finalized_agreement_form) && (
                                 <p className="text-sm text-muted-foreground col-span-2">No documents uploaded.</p>
                             )}
                         </div>
@@ -672,7 +1010,7 @@ function CreateLinkDialog({ onCreated }: { onCreated: () => void }) {
         }
     }
 
-    // Default districs
+    // Default districts
     const districts = [
         "Colombo", "Gampaha", "Kalutara", "Kandy", "Matale", "Nuwara Eliya", "Galle", "Matara", "Hambantota",
         "Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu", "Batticaloa", "Ampara", "Trincomalee",
@@ -701,15 +1039,6 @@ function CreateLinkDialog({ onCreated }: { onCreated: () => void }) {
                     <div className="flex items-center space-x-2 pb-2">
                         <div className="flex items-center space-x-2">
                             <Label htmlFor="google-mode">Use Google Form Link</Label>
-                            <input
-                                id="google-mode"
-                                type="checkbox"
-                                className="toggle" // using standard checkbox tailored as toggle if available, or just checkbox
-                                checked={useGoogleForm}
-                                onChange={(e) => setUseGoogleForm(e.target.checked)}
-                            />
-                            {/* Since we don't have a Switch component imported in this context, using check box or Button toggle */}
-                            {/* Better UI: */}
                             <Button
                                 type="button"
                                 variant={useGoogleForm ? "default" : "outline"}
@@ -798,16 +1127,10 @@ function CreateStudentDialog({ onCreated }: { onCreated: () => void }) {
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
-    // Reusing the same schema-like fields but as a simple form for now
-    // Ideally we reuse the Zod schema from StudentForm but that's in another file. 
-    // We'll create a simple form here.
-
     const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         const formData = new FormData(e.currentTarget);
-        // Add default values for required fields that might be empty if we want to allow partial creation
-        // But backend requires them.
 
         try {
             await axios.post('/api/student-submissions/', formData);
@@ -873,8 +1196,8 @@ function CreateStudentDialog({ onCreated }: { onCreated: () => void }) {
                         <div className="col-span-2 border-t pt-2 mt-2">
                             <Label className="text-base font-semibold">Academic Context</Label>
                         </div>
-
                         <div className="space-y-2">
+
                             <Label>University</Label>
                             <Input name="university" required />
                         </div>
@@ -945,9 +1268,141 @@ function CreateStudentDialog({ onCreated }: { onCreated: () => void }) {
                             <Input name="training_duration" required defaultValue="6 Months" />
                         </div>
 
+                        <div className="col-span-2 border-t pt-2 mt-2">
+                            <Label className="text-base font-semibold">Head Office Information</Label>
+                        </div>
+
+                        <div className="space-y-2 col-span-2 md:col-span-1">
+                            <Label>Name of the Training Establishment (Head Office)</Label>
+                            <Input name="head_office_name" />
+                        </div>
+                        <div className="space-y-2 col-span-2 md:col-span-1">
+                            <Label>Designation of Authorized Officer (Head Office)</Label>
+                            <Input name="head_office_designation" />
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                            <Label>Address of the Training Establishment (Head Office)</Label>
+                            <Input name="head_office_address" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>E-mail Address (Head Office)</Label>
+                            <Input name="head_office_email" type="email" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Telephone Number (Head Office)</Label>
+                            <Input name="head_office_phone" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>OIC Contact Number</Label>
+                            <Input name="officer_in_charge_contact" />
+                        </div>
+
+                        <div className="col-span-2 border-t pt-2 mt-2">
+                            <Label className="text-base font-semibold">Extra Information</Label>
+                        </div>
+                        <div className="space-y-2 col-span-2 md:col-span-1">
+                            <Label>Column 1</Label>
+                            <Input name="column_1" />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button type="submit" disabled={loading}>Create Student</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function AgreementFormDialog({ student, open, onOpenChange, onSuccess }: { student: StudentSubmission | null, open: boolean, onOpenChange: (open: boolean) => void, onSuccess: () => void }) {
+    const [loading, setLoading] = useState(false);
+    const [signatureImg, setSignatureImg] = useState<File | null>(null);
+    const { toast } = useToast();
+
+    if (!student) return null;
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!signatureImg) {
+            toast({ title: "Signature Required", description: "Please upload a signature/stamp image.", variant: "destructive" });
+            return;
+        }
+
+        setLoading(true);
+        const formData = new FormData(e.currentTarget);
+        formData.append("signature_image", signatureImg);
+
+        try {
+            await axios.post(`/api/student-submissions/${student.id}/finalize-agreement/`, formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
+            toast({ title: "Contract Sent", description: "The finalized agreement has been emailed to the student." });
+            onSuccess();
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: "Error", description: error.response?.data?.detail || "Could not finalize the agreement.", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle>Finalize Training Contract</DialogTitle>
+                    <DialogDescription>
+                        Edit and send the finalized contract form to <strong>{student.full_name}</strong>.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                        <Label>Signature / Stamp Image</Label>
+                        <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 hover:bg-muted/50 transition-colors cursor-pointer relative">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                onChange={(e) => e.target.files && setSignatureImg(e.target.files[0])}
+                            />
+                            {signatureImg ? (
+                                <div className="text-center">
+                                    <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                                    <p className="text-sm font-medium">{signatureImg.name}</p>
+                                </div>
+                            ) : (
+                                <div className="text-center text-muted-foreground">
+                                    <Plus className="h-8 w-8 mx-auto mb-2" />
+                                    <p className="text-sm">Click to upload signature image</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Signature Date</Label>
+                        <Input name="date" type="date" required defaultValue={new Date().toISOString().split('T')[0]} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Additional Remarks (Optional)</Label>
+                        <Textarea
+                            name="additional_text"
+                            placeholder="Add any extra instructions or notes to appear on the contract..."
+                            rows={4}
+                        />
+                    </div>
+
+                    <div className="bg-muted/30 p-3 rounded-md text-xs text-muted-foreground">
+                        <p>This will generate a PDF using the student's submission data, attach your signature and remarks, and email it directly to <strong>{student.email}</strong>.</p>
+                    </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                        <Button type="submit" disabled={loading} className="gap-2">
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                            {loading ? "Sending..." : "Send Finalized Contract"}
+                        </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>

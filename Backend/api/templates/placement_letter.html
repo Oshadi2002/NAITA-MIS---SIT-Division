@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industrial Training Letter</title>
+</head>
+
+<body>
+    <p>My No: SIT/PL/01/16<br>
+        {{ today }}</p>
+    <p>{{student.officer_in_charge}}<br>
+        {{student.head_office_designation}},<br>
+        {{student.head_office_address}},<br>
+    </p>
+
+    <p>Dear Sir,</p>
+
+    <p><strong><u>Industrial Training for {{student.university}} – {{student.district}} </u></strong></p>
+
+    <p>According to the response given from you, the following apprentices from {{student.university}} are assigned to
+        your
+        establishment for their industrial training. The duration of the training is {{student.training_duration}}
+        months
+        commencing from {{student.training_start_date}}.</p>
+
+    <p>We shall be grateful to you if you kindly allocate them with suitable assignments in keeping with the training
+        modules under the supervision of a responsible officer.</p>
+
+    <table border="" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Name of Apprentices</th>
+                <th>Field of Training</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{student.initials_name}}</td>
+                <td>{{student.field_of_training}}</td>
+            </tr>
+
+        </tbody>
+    </table>
+
+    <p>Eng. Susantha Jayasinghe,<br>
+        Assistant Director,<br>
+        Special Industrial Training Division</p>
+</body>
+
+</html>

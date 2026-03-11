@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,7 +27,7 @@ SECRET_KEY = 'django-insecure-k6+bwdd(#sl-tjcl(+0v*e)7v9yfc#11*759&i@e08q4nznreu
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
+FRONTEND_URL = 'http://localhost:5000' # Update this for production
 
 # Application definition
 
@@ -73,9 +74,10 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [],
-        'APP_DIRS': True,
+        'APP_DIRS': True,  
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -137,14 +139,14 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email Configuration
-# Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
 
-# Media Configuration
+EMAIL_HOST_USER = 'kawshaniweerasekara@gmail.com'
+EMAIL_HOST_PASSWORD = 'dehp izcv nzrx hciv'
+
+
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
-# Coordinator Configuration
-UNIVERSITY_COORDINATOR_EMAIL = 'admin@example.com' # Placeholder
-GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSf.../viewform' # Placeholder
-
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

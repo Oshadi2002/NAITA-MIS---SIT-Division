@@ -44,7 +44,7 @@ function Router() {
         {currentUser ? <Redirect to="/" /> : <Login />}
       </Route>
 
-      <Route path="/register-coordinator/:token" component={CoordinatorRegistration} />
+      <Route path="/register/:token" component={CoordinatorRegistration} />
 
       <Route path="/">
         <ProtectedRoute component={Dashboard} />
