@@ -9,7 +9,7 @@ from ..serializers import FormLinkSerializer, StudentSubmissionSerializer
 from .base import CsrfExemptSessionAuthentication
 from django.utils import timezone
 from django.db import IntegrityError
-from api.utils.pdf_generator import generate_placement_letter
+from api.utils.pdf_generator import generate_placement_letter, edit_agreement_pdf
 
 class FormLinkViewSet(viewsets.ModelViewSet):
     # queryset = FormLink.objects.all() # Replaced by get_queryset
@@ -84,6 +84,18 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         university = self.request.query_params.get('university')
         if university:
             queryset = queryset.filter(university__icontains=university)
+
+        batch_year = self.request.query_params.get('batch_year')
+        if batch_year:
+            queryset = queryset.filter(batch_year=batch_year)
+
+        district = self.request.query_params.get('district')
+        if district:
+            queryset = queryset.filter(district=district)
+
+        subject = self.request.query_params.get('subject')
+        if subject:
+            queryset = queryset.filter(subject=subject)
 
         return queryset.order_by('-submitted_at')
 
@@ -187,16 +199,18 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             serializer.save()
 
     @action(detail=False, methods=['get'])
-    def export_csv(self, request):
-        import csv
+    def export_excel(self, request):
+        import openpyxl
+        from openpyxl.styles import Font
         from django.http import HttpResponse
+        from io import BytesIO
 
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="student_submissions.csv"'
+        # Create a new workbook and active sheet
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Student Submissions"
 
-        writer = csv.writer(response)
-        
-        # Headers exactly matching requirements
+        # Headers exactly matching requirements (same as CSV)
         headers = [
             'Timestamp',
             'Email Address',
@@ -234,7 +248,11 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             'Register number',
             'Column 1'
         ]
-        writer.writerow(headers)
+
+        # Write headers with bold font
+        ws.append(headers)
+        for cell in ws[1]:
+            cell.font = Font(bold=True)
 
         # Data
         queryset = self.filter_queryset(self.get_queryset())
@@ -245,7 +263,7 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             return ''
 
         for s in queryset:
-            writer.writerow([
+            ws.append([
                 s.submitted_at.strftime("%Y-%m-%d %H:%M:%S") if s.submitted_at else '',
                 s.email,
                 s.university,
@@ -283,6 +301,30 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
                 s.column_1 or ''
             ])
 
+        # Adjust column widths (basic adjustment)
+        for col in ws.columns:
+            max_length = 0
+            column = col[0].column_letter # Get the column name
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = (max_length + 2)
+            ws.column_dimensions[column].width = min(adjusted_width, 50) # Cap at 50
+
+        # Create response
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="student_submissions.xlsx"'
+        
         return response
 
     # ✅ ADD THIS ACTION - Generate Placement Letter PDF
@@ -334,3 +376,145 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
                 {"detail": f"Error generating PDF: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=True, methods=['post'], url_path='finalize-agreement')
+    def finalize_agreement(self, request, pk=None):
+        """
+        Finalize the agreement form: generate PDF, save it, and email to student.
+        Expected data: signature_image (file), additional_text (string), date (string)
+        """
+        from django.core.mail import EmailMessage
+        from django.core.files.base import ContentFile
+        from django.utils import timezone
+        import os
+        
+        if request.user.role != 'ADMIN':
+            return Response(
+                {"detail": "Only administrators can finalize agreement forms."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        try:
+            student = self.get_object()
+            signature_image = request.FILES.get('signature_image')
+            additional_text = request.data.get('additional_text', '')
+            date = request.data.get('date', timezone.now().strftime("%Y-%m-%d"))
+            
+            if not signature_image:
+                return Response({"detail": "Signature image is required."}, status=status.HTTP_400_BAD_REQUEST)
+                
+            # Temporarily save signature image to pass its path to xhtml2pdf
+            temp_sig_path = os.path.join(settings.MEDIA_ROOT, 'temp', f"sig_{student.id}_{signature_image.name}")
+            os.makedirs(os.path.dirname(temp_sig_path), exist_ok=True)
+            
+            with open(temp_sig_path, 'wb+') as destination:
+                for chunk in signature_image.chunks():
+                    destination.write(chunk)
+            
+            try:
+                # Generate PDF
+                pdf_content = edit_agreement_pdf(student, temp_sig_path, additional_text, date)
+                
+                # Save PDF to the student record
+                file_name = f"finalized_agreement_{student.student_reg_no}_{student.id}.pdf"
+                student.finalized_agreement_form.save(file_name, ContentFile(pdf_content))
+                
+                # Update status
+                student.is_agreement_sent = True
+                student.agreement_sent_at = timezone.now()
+                student.save()
+                
+                # Send Email
+                subject = f"Finalized Training Contract - {student.full_name}"
+                body = f"Dear {student.full_name},\n\nPlease find your finalized training contract form attached.\n\nBest Regards,\nSpecial Industrial Training Division"
+                
+                email = EmailMessage(
+                    subject,
+                    body,
+                    settings.EMAIL_HOST_USER,
+                    [student.email],
+                )
+                email.attach(file_name, pdf_content, 'application/pdf')
+                email.send()
+                
+                return Response({
+                    "success": True, 
+                    "message": "Agreement finalized and sent successfully.",
+                    "finalized_agreement_url": request.build_absolute_uri(student.finalized_agreement_form.url)
+                })
+                
+            finally:
+                # Cleanup temp signature image
+                if os.path.exists(temp_sig_path):
+                    os.remove(temp_sig_path)
+                    
+        except StudentSubmission.DoesNotExist:
+            return Response({"detail": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"detail": f"Error finalizing agreement: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+    @action(detail=False, methods=['post'], url_path='download-letters-zip')
+    def download_letters_zip(self, request):
+        """
+        Generate placement letters for multiple students and return as a ZIP file.
+        Only accessible by ADMIN and UNIVERSITY_COORDINATOR.
+        """
+        import zipfile
+        import io
+        from django.http import HttpResponse
+
+        if request.user.role not in ['ADMIN', 'UNIVERSITY_COORDINATOR']:
+            return Response(
+                {"detail": "Only administrators or coordinators can generate placement letters."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        student_ids = request.data.get('ids', [])
+        if not student_ids:
+            return Response(
+                {"detail": "No student IDs provided."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Get only the students the user is allowed to see
+        # filter_queryset combined with get_queryset ensures role-based access control
+        queryset = self.filter_queryset(self.get_queryset()).filter(id__in=student_ids)
+        
+        if not queryset.exists():
+            return Response(
+                {"detail": "No accessible students found for the provided IDs."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        zip_buffer = io.BytesIO()
+        used_filenames = set()
+        
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for student in queryset:
+                try:
+                    # generate_placement_letter returns PDF bytes if file_path is None
+                    pdf_bytes = generate_placement_letter(student, file_path=None)
+                    
+                    safe_name = student.full_name.replace(' ', '_')[:30]
+                    file_name = f"placement_letter_{safe_name}_{student.student_reg_no}_{student.id}.pdf"
+                    
+                    if file_name in used_filenames:
+                        file_name = f"placement_letter_{safe_name}_{student.student_reg_no}_{student.id}_dup.pdf"
+                    used_filenames.add(file_name)
+                    
+                    zip_file.writestr(file_name, pdf_bytes)
+                except Exception as e:
+                    import traceback
+                    print(f"Failed to generate letter for student {student.id}: {str(e)}")
+                    traceback.print_exc()
+                    continue
+                    
+        zip_buffer.seek(0)
+        
+        response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
+        response['Content-Disposition'] = 'attachment; filename="placement_letters.zip"'
+        
+        return response

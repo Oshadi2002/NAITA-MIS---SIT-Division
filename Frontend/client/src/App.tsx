@@ -13,9 +13,12 @@ import CreateRequest from "@/pages/requests/CreateRequest";
 import UserManagement from "@/pages/users/UserManagement";
 import CoordinatorProfile from "@/pages/users/CoordinatorProfile";
 import CoordinatorRegistration from "@/pages/auth/CoordinatorRegistration";
+import StaffRegistration from "@/pages/auth/StaffRegistration";
 import NovationRequestList from "@/pages/requests/NovationRequestList";
 import StudentForm from "@/pages/student-data/StudentForm";
 import StudentDataDashboard from "@/pages/student-data/StudentDataDashboard";
+import AssessmentDashboard from "@/pages/assessment/AssessmentDashboard";
+import MonitoringDashboard from "@/pages/monitoring/MonitoringDashboard";
 import { AppShell } from "@/components/layout/AppShell";
 import { useStore } from "@/lib/store";
 import { useEffect } from "react";
@@ -45,6 +48,8 @@ function Router() {
       </Route>
 
       <Route path="/register/:token" component={CoordinatorRegistration} />
+      <Route path="/staff-register/:token" component={StaffRegistration} />
+
 
       <Route path="/">
         <ProtectedRoute component={Dashboard} />
@@ -80,6 +85,12 @@ function Router() {
       </Route>
       <Route path="/student-data">
         <ProtectedRoute component={StudentDataDashboard} />
+      </Route>
+      <Route path="/assessment">
+        <ProtectedRoute component={AssessmentDashboard} />
+      </Route>
+      <Route path="/monitoring">
+        <ProtectedRoute component={MonitoringDashboard} />
       </Route>
 
       {/* Public Route for Student Data Collection */}

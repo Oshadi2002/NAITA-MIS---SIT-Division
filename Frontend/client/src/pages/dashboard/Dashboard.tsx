@@ -1,6 +1,8 @@
 import { useStore } from "@/lib/store";
 import { SeminarManagementCard } from "@/components/dashboard/SeminarManagementCard";
 import { StudentDataCard } from "@/components/dashboard/StudentDataCard";
+import { MonitoringCard } from "@/components/dashboard/MonitoringCard";
+import { AssessmentCard } from "@/components/dashboard/AssessmentCard";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 
@@ -51,7 +53,7 @@ export default function Dashboard() {
 
       {/* Admin & Coordinator Management Level */}
       {(currentUser.role === 'ADMIN' || currentUser.role === 'UNIVERSITY_COORDINATOR') && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <SeminarManagementCard
             totalRequests={total}
             pendingRequests={pending}
@@ -63,6 +65,16 @@ export default function Dashboard() {
             totalStudents={0} // TODO: Fetch real stats
             uncheckedCount={0}
             onClick={() => setLocation("/student-data")}
+            className="col-span-1"
+          />
+          <MonitoringCard
+            activeMonitors={0} // TODO: Fetch real stats 
+            onClick={() => setLocation("/monitoring")}
+            className="col-span-1"
+          />
+          <AssessmentCard
+            completedStudents={0} // TODO: Fetch real stats
+            onClick={() => setLocation("/assessment")}
             className="col-span-1"
           />
           {/* Future Modules: User Management, Reports, etc. */}

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NAITA Training Contract Form</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 10px;
+        }
+
+        .section {
+            margin-bottom: 15px;
+        }
+
+        .label {
+            font-weight: bold;
+        }
+
+        .signature-section {
+            margin-top: 30px;
+        }
+
+        .signature-img {
+            max-width: 200px;
+            height: auto;
+            display: block;
+            margin-top: 10px;
+        }
+
+        .additional-text {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>NATIONAL APPRENTICE AND INDUSTRIAL TRAINING AUTHORITY (NAITA)</h1>
+        <div class="title">TRAINING CONTRACT FORM</div>
+    </div>
+
+    <div class="section">
+        <p>This is to certify that the following training contract has been finalized and approved for the student
+            mentioned below.</p>
+    </div>
+
+    <div class="section">
+        <h3 class="label">Student Details:</h3>
+        <table>
+            <tr>
+                <td class="label">Full Name</td>
+                <td>{{ student.full_name }}</td>
+            </tr>
+            <tr>
+                <td class="label">NIC Number</td>
+                <td>{{ student.nic }}</td>
+            </tr>
+            <tr>
+                <td class="label">University/Institute</td>
+                <td>{{ student.university }}</td>
+            </tr>
+            <tr>
+                <td class="label">Registration No</td>
+                <td>{{ student.student_reg_no }}</td>
+            </tr>
+            <tr>
+                <td class="label">Degree/Diploma</td>
+                <td>{{ student.degree_diploma_name }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h3 class="label">Training Details:</h3>
+        <table>
+            <tr>
+                <td class="label">Establishment</td>
+                <td>{{ student.training_establishment }}</td>
+            </tr>
+            <tr>
+                <td class="label">Location</td>
+                <td>{{ student.training_address }}</td>
+            </tr>
+            <tr>
+                <td class="label">Field of Training</td>
+                <td>{{ student.field_of_training }}</td>
+            </tr>
+            <tr>
+                <td class="label">Duration</td>
+                <td>{{ student.training_duration }}</td>
+            </tr>
+            <tr>
+                <td class="label">Start Date</td>
+                <td>{{ student.training_start_date }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {% if additional_text %}
+    <div class="section">
+        <h3 class="label">Additional Information / Remarks:</h3>
+        <div class="additional-text">
+            {{ additional_text|linebreaksbr }}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="signature-section">
+        <p><span class="label">Date:</span> {{ date }}</p>
+        <p class="label">Authorized Signature & Stamp:</p>
+        {% if signature_image %}
+        <img src="{{ signature_image }}" class="signature-img">
+        {% else %}
+        <div
+            style="height: 100px; border: 1px dashed #ccc; width: 200px; text-align: center; padding-top: 40px; color: #ccc;">
+            (Signature & Stamp)
+        </div>
+        {% endif %}
+        <p style="margin-top: 5px;">Assistant Director,<br>Special Industrial Training Division</p>
+    </div>
+
+    <div class="footer">
+        Generated on {{ today }} | NAITA Special Industrial Training Division (SIT)
+    </div>
+</body>
+
+</html>

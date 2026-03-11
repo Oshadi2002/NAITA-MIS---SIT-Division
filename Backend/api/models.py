@@ -5,6 +5,7 @@ class User(AbstractUser):
     ROLE_CHOICES = [
         ('ADMIN', 'Admin'),
         ('INSPECTOR', 'Inspector'),
+        ('ASSESSOR', 'Assessor'),
         ('UNIVERSITY_COORDINATOR', 'University Coordinator'),
     ]
     role = models.CharField(max_length=50, choices=ROLE_CHOICES)
@@ -131,6 +132,11 @@ class StudentSubmission(models.Model):
     marked_status = models.BooleanField(default=False, help_text="Marked by Admin")
     admin_reg_number = models.CharField(max_length=50, null=True, blank=True) # "Register Number" (Admin Assigned)
 
+    # Agreement Flow Fields
+    finalized_agreement_form = models.FileField(upload_to='student_docs/finalized_agreement/', null=True, blank=True)
+    is_agreement_sent = models.BooleanField(default=False)
+    agreement_sent_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         unique_together = ('nic', 'form_link') # Prevent duplicates for same link? Or global? User said "Duplicate submissions must be prevented"
 
@@ -241,3 +247,67 @@ class CoordinatorPendingRegistration(models.Model):
 
     def __str__(self):
         return f"Pending: {self.full_name} ({self.status})"
+
+
+# ─── Staff Invite System (Assessors & Inspectors) ─────────────────────────────
+
+class StaffInvite(models.Model):
+    INVITE_TYPE_CHOICES = [
+        ('ASSESSOR', 'Assessor'),
+        ('INSPECTOR', 'Inspector'),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    invite_type = models.CharField(max_length=20, choices=INVITE_TYPE_CHOICES)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_staff_invites')
+    email = models.EmailField(null=True, blank=True)
+    status = models.CharField(max_length=20, default='PENDING', choices=[('PENDING', 'Pending'), ('USED', 'Used')])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.invite_type} Invite {self.id} ({self.status})"
+
+
+class StaffPendingRegistration(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+    ]
+
+    invite = models.OneToOneField(StaffInvite, on_delete=models.CASCADE, related_name='pending_registration')
+    invite_type = models.CharField(max_length=20)  # Copied from invite for fast querying
+
+    # Common fields
+    full_name = models.CharField(max_length=255)
+    initials_name = models.CharField(max_length=255, blank=True, default='')
+    permanent_address = models.TextField(blank=True, default='')
+    phone_number = models.CharField(max_length=20, blank=True, default='')
+    email = models.EmailField()
+    province = models.CharField(max_length=100, blank=True, default='')
+    district = models.CharField(max_length=100, blank=True, default='')
+    qualification = models.CharField(max_length=255, blank=True, default='')
+
+    # Assessor-specific (stored as JSON)
+    # payment_details: { account_number, bank_name, branch }
+    payment_details = models.JSONField(null=True, blank=True)
+    # assessment_fields: ["IT", "Civil Engineering", ...]
+    assessment_fields = models.JSONField(null=True, blank=True)
+
+    # Inspector-specific
+    is_also_assessor = models.BooleanField(default=False)
+    # assessor_data mirrors the assessor-specific fields above, populated if is_also_assessor
+    assessor_data = models.JSONField(null=True, blank=True)
+
+    # Created user (set after account creation)
+    created_user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='staff_registration'
+    )
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    admin_note = models.TextField(blank=True, default='')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.invite_type} Pending: {self.full_name} ({self.status})"

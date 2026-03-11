@@ -5,6 +5,7 @@ from .viewsets.student_data import FormLinkViewSet, StudentSubmissionViewSet
 from .viewsets.novation import NovationRequestViewSet
 from .viewsets.audit import DataEditRequestViewSet, AuditLogViewSet
 from .viewsets.invites import CoordinatorInviteViewSet
+from .viewsets.staff_invites import StaffInviteViewSet
 
 router = DefaultRouter()
 router.register(r'auth', AuthViewSet, basename='auth')
@@ -17,6 +18,7 @@ router.register(r'novation-requests', NovationRequestViewSet, basename='novation
 router.register(r'data-edit-requests', DataEditRequestViewSet, basename='data-edit-requests')
 router.register(r'audit-logs', AuditLogViewSet, basename='audit-logs')
 router.register(r'coordinator-invites', CoordinatorInviteViewSet, basename='coordinator-invites')
+router.register(r'staff-invites', StaffInviteViewSet, basename='staff-invites')
 
 urlpatterns = [
     path('', include(router.urls)),

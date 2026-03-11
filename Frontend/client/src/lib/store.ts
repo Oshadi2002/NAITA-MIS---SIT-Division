@@ -52,6 +52,9 @@ interface AppState {
   approvePending: (id: number, username: string, password: string) => Promise<{ success: boolean; emailSent?: boolean; error?: string }>;
   rejectPending: (id: number, note: string) => Promise<{ success: boolean; message?: string; error?: string }>;
 
+  // Staff Actions
+  createStaffInvite: (email: string, invite_type: 'ASSESSOR' | 'INSPECTOR') => Promise<{ success: boolean; link?: string; message?: string }>;
+
   // Request Actions
   fetchRequests: () => Promise<void>;
   createRequest: (data: Partial<SeminarRequest>) => Promise<{ success: boolean; message?: string }>;
@@ -200,6 +203,20 @@ export const useStore = create<AppState>()((set, get) => ({
       return { success: false, message: data.message || "Failed to create invite." };
     } catch (e: any) {
       console.error("Create invite failed", e);
+      return { success: false, message: e.message || "Network error" };
+    }
+  },
+
+  createStaffInvite: async (email, invite_type) => {
+    try {
+      const res = await apiRequest('POST', '/api/staff-invites/create_invite/', { email, invite_type });
+      const data = await res.json();
+      if (res.ok) {
+        return { success: true, link: data.link, message: data.email_sent ? "Invite sent via email." : "Invite created successfully." };
+      }
+      return { success: false, message: data.message || "Failed to create invite." };
+    } catch (e: any) {
+      console.error("Create staff invite failed", e);
       return { success: false, message: e.message || "Network error" };
     }
   },

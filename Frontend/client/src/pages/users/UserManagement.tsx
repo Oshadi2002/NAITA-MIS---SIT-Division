@@ -45,6 +45,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 
 interface PendingRegistration {
   id: number;
@@ -71,6 +73,7 @@ export default function UserManagement() {
     approvePending,
     rejectPending,
     createInvite,
+    createStaffInvite,
     error,
     clearError
   } = useStore();
@@ -78,10 +81,14 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  // Form state
   const [isOpen, setIsOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+
+  const [isStaffInviteOpen, setIsStaffInviteOpen] = useState(false);
+  const [staffInviteEmail, setStaffInviteEmail] = useState("");
+  const [staffInviteType, setStaffInviteType] = useState<"ASSESSOR" | "INSPECTOR">("ASSESSOR");
+
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -381,6 +388,51 @@ export default function UserManagement() {
     }
   };
 
+  const handleCreateStaffInvite = async () => {
+    if (!staffInviteEmail) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter an email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await createStaffInvite(staffInviteEmail, staffInviteType);
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message || `Invitation sent to ${staffInviteEmail}`,
+        });
+        setIsStaffInviteOpen(false);
+        setStaffInviteEmail("");
+      } else {
+        toast({
+          title: "Error",
+          description: result.message || "Failed to send invitation.",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send invitation.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openStaffInviteDialog = (type: "ASSESSOR" | "INSPECTOR") => {
+    setStaffInviteType(type);
+    setStaffInviteEmail("");
+    setIsStaffInviteOpen(true);
+  };
+
+
   return (
     <div className="space-y-6 p-6">
       {/* Header with Create User Button */}
@@ -434,6 +486,54 @@ export default function UserManagement() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Invite Staff Dialog (Assessor / Inspector) */}
+          <Dialog open={isStaffInviteOpen} onOpenChange={setIsStaffInviteOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Invite {staffInviteType === 'ASSESSOR' ? 'Assessor' : 'Inspector'}</DialogTitle>
+                <DialogDescription>
+                  Enter the email address to send them a registration link.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="staffInviteEmail">Email Address</Label>
+                  <Input
+                    id="staffInviteEmail"
+                    type="email"
+                    placeholder="email@example.com"
+                    value={staffInviteEmail}
+                    onChange={(e) => setStaffInviteEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsStaffInviteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateStaffInvite} disabled={loading || !staffInviteEmail}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Invitation"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Button variant="outline" className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50" onClick={() => openStaffInviteDialog("ASSESSOR")}>
+            <Mail className="h-4 w-4" /> Invite Assessor
+          </Button>
+          <Button variant="outline" className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => openStaffInviteDialog("INSPECTOR")}>
+            <Mail className="h-4 w-4" /> Invite Inspector
+          </Button>
 
           {/* Create User Dialog */}
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -713,109 +813,90 @@ export default function UserManagement() {
         </Select>
       </div>
 
-      {/* Users Table */}
-      {filteredUsers.length === 0 ? (
-        <div className="text-center py-12 border rounded-md bg-muted/10">
-          <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-          <h3 className="font-medium text-lg">No users found</h3>
-          <p className="text-sm text-muted-foreground">
-            Try adjusting your search or create a new user.
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-md border bg-card shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead>User / Role</TableHead>
-                <TableHead>Contact Info</TableHead>
-                <TableHead>Institution</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map(user => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{user.name}</span>
-                      <span className="text-xs text-muted-foreground">@{user.username}</span>
-                      <div className="flex items-center gap-1 mt-1">
+      {/* Users Tabs */}
+      <Tabs defaultValue="ADMIN" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="ADMIN">Administrators</TabsTrigger>
+          <TabsTrigger value="ASSESSOR">Assessors</TabsTrigger>
+          <TabsTrigger value="INSPECTOR">Inspectors</TabsTrigger>
+          <TabsTrigger value="UNIVERSITY_COORDINATOR">Coordinators</TabsTrigger>
+        </TabsList>
+
+        {["ADMIN", "ASSESSOR", "INSPECTOR", "UNIVERSITY_COORDINATOR"].map(roleFilter => {
+          const roleUsers = filteredUsers.filter(u => u.role === roleFilter);
+
+          return (
+            <TabsContent key={roleFilter} value={roleFilter}>
+              {roleUsers.length === 0 ? (
+                <div className="text-center py-12 border rounded-md bg-muted/10">
+                  <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <h3 className="font-medium text-lg">No users found</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Try adjusting your search or invite a new {roleFilter.replace('_', ' ').toLowerCase()}.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {roleUsers.map(user => (
+                    <Card key={user.id} className="shadow-sm">
+                      <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
+                        <div>
+                          <CardTitle className="text-lg font-bold">{user.name}</CardTitle>
+                          <CardDescription>@{user.username}</CardDescription>
+                        </div>
                         {user.role === 'ADMIN' ? (
-                          <Shield className="h-3 w-3 text-primary" />
+                          <Shield className="h-5 w-5 text-primary" />
                         ) : (
-                          <UserCog className="h-3 w-3 text-muted-foreground" />
+                          <UserCog className="h-5 w-5 text-muted-foreground" />
                         )}
-                        <span className="text-xs capitalize">
-                          {user.role?.replace('_', ' ').toLowerCase()}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col text-sm">
-                      <span>{user.email}</span>
-                      {user.phone_number && (
-                        <span className="text-xs text-muted-foreground">
-                          Tel: {user.phone_number}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col text-sm">
-                      <span className="font-medium">{user.university || "-"}</span>
-                      {user.faculty && (
-                        <span className="text-xs text-muted-foreground">
-                          {user.faculty}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col text-sm">
-                      <span>{user.department || "-"}</span>
-                      {user.designation && (
-                        <span className="text-xs text-muted-foreground">
-                          {user.designation}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setResetDialogOpen(true);
-                        }}
-                        title="Reset Password"
-                      >
-                        <KeyRound className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setDeleteDialogOpen(true);
-                        }}
-                        title="Delete User"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                      </CardHeader>
+                      <CardContent className="space-y-2 pb-2 text-sm">
+                        <div className="flex flex-col">
+                          <span className="text-muted-foreground text-xs uppercase font-semibold">Contact</span>
+                          <span>{user.email}</span>
+                          {user.phone_number && <span>Tel: {user.phone_number}</span>}
+                        </div>
+                        <div className="flex flex-col pt-2 border-t">
+                          <span className="text-muted-foreground text-xs uppercase font-semibold">Details</span>
+                          <span>{user.university || "N/A"}</span>
+                          {user.faculty && <span>{user.faculty}</span>}
+                          {user.department && <span>Dept: {user.department}</span>}
+                          {user.designation && <span>{user.designation}</span>}
+                        </div>
+                      </CardContent>
+                      <CardFooter className="pt-2 flex justify-end gap-2 border-t bg-muted/10">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setResetDialogOpen(true);
+                          }}
+                          title="Reset Password"
+                        >
+                          <KeyRound className="h-4 w-4 mr-1" /> Reset
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setDeleteDialogOpen(true);
+                          }}
+                          title="Delete User"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" /> Delete
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          );
+        })}
+      </Tabs>
 
       {/* Approve Dialog */}
       <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
