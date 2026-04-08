@@ -229,67 +229,11 @@ class StaffInviteViewSet(viewsets.ViewSet):
             invite.status = 'USED'
             invite.save()
 
-            # Auto-create user account
-            role_map = {'ASSESSOR': 'ASSESSOR', 'INSPECTOR': 'INSPECTOR'}
-            role = role_map.get(invite_type, 'INSPECTOR')
-
-            username = generate_username(full_name, invite_type)
-            password = generate_password()
-
-            name_parts = full_name.split(' ', 1)
-            first_name = name_parts[0]
-            last_name = name_parts[1] if len(name_parts) > 1 else ''
-
-            user = User.objects.create_user(
-                username=username,
-                email=email,
-                password=password,
-                role=role,
-                first_name=first_name,
-                last_name=last_name,
-                phone_number=data.get('phone_number', '').strip(),
-            )
-
-            # Update pending registration with created user
-            pending.created_user = user
-            pending.status = 'APPROVED'
-            pending.reviewed_at = timezone.now()
-            pending.save()
-
-            # Send credentials email
-            role_label = 'Assessor' if invite_type == 'ASSESSOR' else 'Inspector'
-            domain = getattr(settings, 'FRONTEND_URL', 'http://localhost:5000')
-            login_url = f"{domain}/login"
-
-            email_sent = False
-            try:
-                send_mail(
-                    subject=f"Your {role_label} Account — NAITA",
-                    message=(
-                        f"Hello {full_name},\n\n"
-                        f"Your {role_label} account has been created successfully.\n\n"
-                        f"Login Credentials:\n"
-                        f"  Username: {username}\n"
-                        f"  Password: {password}\n\n"
-                        f"Login here: {login_url}\n\n"
-                        f"Please change your password after your first login.\n\n"
-                        f"Thank you.\nNAITA Team"
-                    ),
-                    from_email=settings.EMAIL_HOST_USER,
-                    recipient_list=[email],
-                    fail_silently=False,
-                )
-                email_sent = True
-            except Exception as e:
-                logger.error(f"Failed to send credentials email to {email}: {str(e)}")
+            # Registration is now pending Admin approval. We do NOT auto-create the user here.
 
             return Response({
-                'message': (
-                    'Registration successful! Your login credentials have been sent to your email.'
-                    if email_sent else
-                    'Registration successful! Your account has been created. Please contact the admin for your credentials.'
-                ),
-                'email_sent': email_sent,
+                'message': 'Registration successful! Your details have been submitted for admin approval. You will receive your login credentials via email once approved.',
+                'email_sent': False, # Email is sent upon admin approval
             }, status=status.HTTP_201_CREATED)
 
         except StaffInvite.DoesNotExist:
@@ -348,6 +292,105 @@ class StaffInviteViewSet(viewsets.ViewSet):
                 {'message': 'Error fetching pending registrations.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    # ─── Admin: Approve Pending Registration ──────────────────────────────────
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def approve_pending(self, request, pk=None):
+        if request.user.role != 'ADMIN':
+            return Response(
+                {'message': 'Permission denied.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            pending = StaffPendingRegistration.objects.get(id=pk, status='PENDING')
+        except StaffPendingRegistration.DoesNotExist:
+            return Response(
+                {'message': 'Pending registration not found or already processed.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 1. Create User
+        invite_type = pending.invite_type
+        role_map = {'ASSESSOR': 'ASSESSOR', 'INSPECTOR': 'INSPECTOR'}
+        role = role_map.get(invite_type, 'INSPECTOR')
+
+        username = generate_username(pending.full_name, invite_type)
+        password = generate_password()
+
+        name_parts = pending.full_name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        # Check if email is already in use
+        if User.objects.filter(email=pending.email).exists():
+            return Response(
+                {'message': 'A user with this email already exists.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.create_user(
+                username=username,
+                email=pending.email,
+                password=password,
+                role=role,
+                first_name=first_name,
+                last_name=last_name,
+                phone_number=pending.phone_number,
+            )
+        except Exception as e:
+            logger.error(f"Failed to auto-create user during approval: {str(e)}")
+            return Response(
+                {'message': 'Failed to create user account.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # 2. Update Pending record
+        pending.created_user = user
+        pending.status = 'APPROVED'
+        pending.reviewed_at = timezone.now()
+        pending.save()
+
+        # 3. Send credentials email
+        role_label = 'Assessor' if invite_type == 'ASSESSOR' else 'Inspector'
+        domain = getattr(settings, 'FRONTEND_URL', 'http://localhost:5000')
+        login_url = f"{domain}/login"
+
+        email_sent = False
+        try:
+            send_mail(
+                subject=f"Your {role_label} Account — NAITA",
+                message=(
+                    f"Hello {pending.full_name},\n\n"
+                    f"Your registration as a {role_label} has been approved.\n\n"
+                    f"Login Credentials:\n"
+                    f"  Username: {username}\n"
+                    f"  Password: {password}\n\n"
+                    f"Login here: {login_url}\n\n"
+                    f"Please log in and change your password immediately.\n\n"
+                    f"Thank you.\nNAITA Team"
+                ),
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[pending.email],
+                fail_silently=False,
+            )
+            email_sent = True
+        except Exception as e:
+            logger.error(f"Failed to send credentials email to {pending.email} during approval: {str(e)}")
+
+        # Serialize the created user to return to the frontend
+        return Response({
+            'message': 'Registration approved and user created successfully.',
+            'email_sent': email_sent,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'username': user.username,
+                'role': user.role,
+                'name': f"{user.first_name} {user.last_name}".strip(),
+            }
+        }, status=status.HTTP_200_OK)
 
     # ─── Admin: Reject Pending Registration ────────────────────────────────────
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])

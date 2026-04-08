@@ -160,8 +160,8 @@ export default function StaffRegistration() {
                         </div>
                         <CardTitle className="text-2xl text-green-700">Registration Complete!</CardTitle>
                         <CardDescription className="text-base mt-2 leading-relaxed">
-                            Your details have been successfully submitted and your account has been automatically created.<br /><br />
-                            <strong>Please check your email.</strong> Your login credentials have been sent to you.<br />
+                            Your details have been successfully submitted for administrative review.<br /><br />
+                            <strong>Please check your email shortly.</strong> Once approved, your login credentials will be sent to you.<br />
                         </CardDescription>
                     </CardHeader>
                     <CardFooter className="justify-center">
@@ -362,7 +362,7 @@ export default function StaffRegistration() {
 
                         <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-sm text-blue-700">
                             <strong>What happens next?</strong><br />
-                            After submitting, your user account will be created automatically and your <strong>username &amp; password will be sent via email immediately</strong>.
+                            After submitting, your details will be reviewed by an Administrator. Once approved, your <strong>username &amp; password will be sent via email</strong>.
                         </div>
 
                     </CardContent>

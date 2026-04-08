@@ -6,6 +6,7 @@ from .viewsets.novation import NovationRequestViewSet
 from .viewsets.audit import DataEditRequestViewSet, AuditLogViewSet
 from .viewsets.invites import CoordinatorInviteViewSet
 from .viewsets.staff_invites import StaffInviteViewSet
+from .viewsets.viva import VivaPanelViewSet, VivaAssignmentViewSet, AssessmentMarkViewSet, AssessorDailyReportViewSet
 
 router = DefaultRouter()
 router.register(r'auth', AuthViewSet, basename='auth')
@@ -19,6 +20,10 @@ router.register(r'data-edit-requests', DataEditRequestViewSet, basename='data-ed
 router.register(r'audit-logs', AuditLogViewSet, basename='audit-logs')
 router.register(r'coordinator-invites', CoordinatorInviteViewSet, basename='coordinator-invites')
 router.register(r'staff-invites', StaffInviteViewSet, basename='staff-invites')
+router.register(r'viva-panels', VivaPanelViewSet, basename='viva-panels')
+router.register(r'viva-assignments', VivaAssignmentViewSet, basename='viva-assignments')
+router.register(r'assessment-marks', AssessmentMarkViewSet, basename='assessment-marks')
+router.register(r'assessor-reports', AssessorDailyReportViewSet, basename='assessor-reports')
 
 urlpatterns = [
     path('', include(router.urls)),

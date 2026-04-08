@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { ShieldCheck, GraduationCap, MapPin, Microscope, LogIn, Mail, Lock } from "lucide-react";
 import loginHero from "@/assets/login-hero.png";
 
 export default function Login() {
@@ -35,25 +36,42 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
-      {/* Left: Content */}
-      <div className="flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-serif font-bold text-primary">NAITA</h1>
-            <p className="text-muted-foreground">Special Industrial Training Division </p>
+    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50">
+      {/* Left: Content Side */}
+      <div className="flex items-center justify-center p-6 sm:p-12 relative overflow-hidden">
+        {/* Abstract Background Element */}
+        <div className="absolute top-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+
+        <div className="w-full max-w-md space-y-10 relative z-10">
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary shadow-lg shadow-primary/20 mb-4 transform -rotate-3 transition-transform hover:rotate-0">
+               <GraduationCap className="h-10 w-10 text-white" />
+            </div>
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 font-serif">NAITA</h1>
+            <p className="text-slate-500 font-medium">Special Industrial Training Division</p>
           </div>
 
-          <Tabs defaultValue="admin" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8">
-              <TabsTrigger value="admin">Admin</TabsTrigger>
-              <TabsTrigger value="coordinator">Coordinator</TabsTrigger>
-              <TabsTrigger value="inspector">Inspector</TabsTrigger>
+          <Tabs defaultValue="admin" className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <TabsList className="grid w-full grid-cols-4 h-14 bg-white shadow-sm border p-1 rounded-xl mb-8">
+              <TabsTrigger value="admin" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
+                <ShieldCheck className="h-4 w-4 mr-2 hidden sm:inline" /> Admin
+              </TabsTrigger>
+              <TabsTrigger value="coordinator" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
+                <GraduationCap className="h-4 w-4 mr-2 hidden sm:inline" /> Uni
+              </TabsTrigger>
+              <TabsTrigger value="inspector" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
+                <MapPin className="h-4 w-4 mr-2 hidden sm:inline" /> Inspect
+              </TabsTrigger>
+              <TabsTrigger value="assessor" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
+                <Microscope className="h-4 w-4 mr-2 hidden sm:inline" /> Viva
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="admin">
               <LoginForm
-                role="Administrator"
+                role="System Administrator"
+                icon={<ShieldCheck className="w-5 h-5 text-primary" />}
                 defaultEmail="admin@system.com"
                 onSubmit={handleLogin}
                 loading={loading}
@@ -63,6 +81,7 @@ export default function Login() {
             <TabsContent value="coordinator">
               <LoginForm
                 role="University Coordinator"
+                icon={<GraduationCap className="w-5 h-5 text-primary" />}
                 defaultEmail="colombo@uni.com"
                 onSubmit={handleLogin}
                 loading={loading}
@@ -71,82 +90,151 @@ export default function Login() {
 
             <TabsContent value="inspector">
               <LoginForm
-                role="Inspector"
+                role="District Inspector"
+                icon={<MapPin className="w-5 h-5 text-primary" />}
                 defaultEmail="john@inspector.com"
+                onSubmit={handleLogin}
+                loading={loading}
+              />
+            </TabsContent>
+
+            <TabsContent value="assessor">
+              <LoginForm
+                role="Viva Assessor"
+                icon={<Microscope className="w-5 h-5 text-primary" />}
+                defaultEmail="john@assessor.com"
                 onSubmit={handleLogin}
                 loading={loading}
               />
             </TabsContent>
           </Tabs>
 
-          <div className="text-center text-xs text-muted-foreground">
-            Protected by SIT Division IT Services &copy; 2026
+          <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium pt-4">
+             <span>SIT Division IT Services &copy; 2026</span>
+             <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Secure Access</span>
           </div>
         </div>
       </div>
 
-      {/* Right: Hero Image */}
-      <div className="hidden lg:block relative bg-muted">
-        <div className="absolute inset-0 bg-primary/20 mix-blend-multiply z-10" />
+      {/* Right: Hero Side */}
+      <div className="hidden lg:block relative m-6 overflow-hidden rounded-3xl shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/60 to-purple-800/80 mix-blend-multiply z-10" />
         <img
           src={loginHero}
-          alt="University Hall"
-          className="absolute inset-0 h-full w-full object-contain grayscale-[20%]"
+          alt="Modern University"
+          className="absolute inset-0 h-full w-full object-cover scale-110 hover:scale-100 transition-transform duration-10000"
         />
-        <div className="absolute bottom-12 left-12 right-12 z-20 text-white p-8 backdrop-blur-md bg-black/30 rounded-lg border border-white/10">
-          <blockquote className="font-serif text-xl italic mb-4">
-            "Education is the passport to the future, for tomorrow belongs to those who prepare for it today."
-          </blockquote>
-          <cite className="not-italic text-sm font-medium opacity-80">- Malcom X</cite>
+        
+        <div className="absolute inset-x-0 bottom-0 p-12 z-20 space-y-6">
+          <div className="p-10 backdrop-blur-xl bg-white/10 rounded-2xl border border-white/20 shadow-2xl space-y-6 max-w-lg">
+             <div className="w-12 h-1 bg-white/40 rounded-full" />
+             <blockquote className="font-serif text-3xl leading-snug text-white italic">
+               "Empowering future professionals through Excellence in Industrial Training."
+             </blockquote>
+             <div className="flex items-center gap-3">
+               <div className="w-10 h-10 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white font-bold text-xs ring-4 ring-white/5">
+                 NI
+               </div>
+               <div>
+                  <p className="text-white font-bold text-sm">National Apprentice & Industrial Training Authority</p>
+                  <p className="text-white/60 text-xs">SIT Division Digital Portal</p>
+               </div>
+             </div>
+          </div>
+        </div>
+
+        {/* Floating Decorative Elements */}
+        <div className="absolute top-12 right-12 z-20 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white text-xs font-bold tracking-widest uppercase flex items-center gap-2">
+           <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+           Systems Online
         </div>
       </div>
     </div>
   );
 }
 
-function LoginForm({ role, defaultEmail, onSubmit, loading }: { role: string, defaultEmail: string, onSubmit: (username: string, password?: string) => void, loading: boolean }) {
+function LoginForm({ role, icon, defaultEmail, onSubmit, loading }: { role: string, icon: React.ReactNode, defaultEmail: string, onSubmit: (username: string, password?: string) => void, loading: boolean }) {
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState("password");
 
   return (
-    <Card className="border-none shadow-xl">
-      <CardHeader>
-        <CardTitle>Login as {role}</CardTitle>
-        <CardDescription>Enter your credentials to access the dashboard.</CardDescription>
+    <Card className="border-none shadow-2xl bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden group">
+      <CardHeader className="space-y-1 pb-6 pt-8">
+        <div className="flex items-center justify-between">
+           <div className="p-2.5 bg-primary/10 rounded-xl mb-2 group-hover:bg-primary/20 transition-colors">
+              {icon}
+           </div>
+           <Badge variant="outline" className="text-[10px] font-bold border-primary/20 text-primary uppercase tracking-tighter">Secure</Badge>
+        </div>
+        <CardTitle className="text-2xl font-bold text-slate-900">Sign in as {role}</CardTitle>
+        <CardDescription className="text-slate-500 font-medium tracking-tight">Access your administrative workspace</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5 pb-8">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="m@example.com"
-            data-testid="input-email"
-          />
+          <Label htmlFor="email" className="text-sm font-bold text-slate-700 ml-1">Work Email</Label>
+          <div className="relative group">
+            <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@naita.gov.lk"
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all rounded-xl"
+              data-testid="input-email"
+            />
+          </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            data-testid="input-password"
-          />
+          <div className="flex justify-between items-center ml-1">
+            <Label htmlFor="password" className="text-sm font-bold text-slate-700">Access Key</Label>
+            <button className="text-[11px] font-bold text-primary hover:underline">Forgot access?</button>
+          </div>
+          <div className="relative group">
+            <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all rounded-xl"
+              data-testid="input-password"
+            />
+          </div>
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="bg-slate-50 px-8 py-6 border-t border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+           <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+           <span className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Authorized use only</span>
+        </div>
         <Button
-          className="w-full"
+          className="h-12 px-8 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20 transition-all hover:-translate-y-1 active:translate-y-0"
           onClick={() => onSubmit(email, password)}
           disabled={loading}
           data-testid="button-submit"
         >
-          {loading ? "Signing in..." : "Sign In"}
+          {loading ? (
+             <div className="flex items-center gap-2">
+               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+               Processing...
+             </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              Sign In <LogIn className="w-4 h-4" />
+            </div>
+          )}
         </Button>
       </CardFooter>
     </Card>
+  );
+}
+
+// Internal Badge shim if not imported correctly, though usually UI components are expected to be present
+function Badge({ children, className, variant }: any) {
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${className}`}>
+      {children}
+    </span>
   );
 }

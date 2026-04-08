@@ -9,6 +9,7 @@ from django.utils import timezone
 class SeminarRequestViewSet(viewsets.ModelViewSet):
     serializer_class = SeminarRequestSerializer
     authentication_classes = (CsrfExemptSessionAuthentication,)
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
@@ -26,12 +27,21 @@ class SeminarRequestViewSet(viewsets.ModelViewSet):
             'date': timezone.now().isoformat(),
             'by': full_name
         }]
-        serializer.save(
+        instance = serializer.save(
             coordinator=user,
             coordinator_name=user.username,
             university_name=user.university or 'Unknown University',
             status_history=history
         )
+        
+        # Notify all admins
+        admins = User.objects.filter(role='ADMIN')
+        for admin in admins:
+            Notification.objects.create(
+                to_user=admin,
+                title='New Seminar Request',
+                message=f'A new seminar request has been submitted by {user.username} ({instance.university_name}).'
+            )
 
     @action(detail=True, methods=['patch'])
     def status(self, request, pk=None):

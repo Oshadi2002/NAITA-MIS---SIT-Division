@@ -13,11 +13,7 @@ export default function SeminarDashboard() {
     if (!currentUser) return null;
 
     // Calculate Stats
-    const myRequests = currentUser.role === 'ADMIN'
-        ? requests
-        : currentUser.role === 'INSPECTOR'
-            ? requests.filter(r => r.assigned_inspector === currentUser.id)
-            : requests.filter(r => r.coordinator === currentUser.id);
+    const myRequests = requests;
 
     const pending = myRequests.filter(r => r.status === 'PENDING').length;
     const approved = myRequests.filter(r => r.status === 'APPROVED').length;

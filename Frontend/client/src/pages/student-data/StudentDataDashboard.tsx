@@ -98,6 +98,20 @@ export default function StudentDataDashboard() {
     // Derived Search State for the final list
     const [search, setSearch] = useState("");
 
+    // Global ID Search State (searches across ALL students regardless of nav path)
+    const [globalSearch, setGlobalSearch] = useState("");
+
+    // Compute global search results - searches by student_reg_no or NIC
+    const globalSearchResults = useMemo(() => {
+        const q = globalSearch.trim().toLowerCase();
+        if (!q) return [];
+        return students.filter(s =>
+            s.student_reg_no.toLowerCase().includes(q) ||
+            s.nic.toLowerCase().includes(q) ||
+            s.admin_reg_number?.toLowerCase().includes(q)
+        );
+    }, [students, globalSearch]);
+
     useEffect(() => {
         if (currentUser?.role) fetchData();
     }, [activeTab, currentUser]);
@@ -469,6 +483,7 @@ export default function StudentDataDashboard() {
     const [editingStudent, setEditingStudent] = useState<StudentSubmission | null>(null);
     const [novationStudent, setNovationStudent] = useState<StudentSubmission | null>(null);
     const [finalizingStudent, setFinalizingStudent] = useState<StudentSubmission | null>(null);
+    const [globalSearchPreviewStudent, setGlobalSearchPreviewStudent] = useState<StudentSubmission | null>(null);
 
     // Download state lifted to parent to prevent StudentListView remounting on search state change
     const [isDownloadingZip, setIsDownloadingZip] = useState(false);
@@ -570,6 +585,156 @@ export default function StudentDataDashboard() {
                 <LinkManagementView />
             ) : (
                 <div className="space-y-6">
+
+                    {/* Global Student ID Search Bar */}
+                    <div className="relative">
+                        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-xl shadow-sm">
+                            <div className="flex items-center gap-2 text-primary">
+                                <Search className="w-5 h-5" />
+                                <span className="text-sm font-semibold whitespace-nowrap hidden sm:block">Search by ID</span>
+                            </div>
+                            <div className="relative flex-1">
+                                <Input
+                                    id="global-student-id-search"
+                                    placeholder="Enter Student Registration No. or NIC to view full details..."
+                                    value={globalSearch}
+                                    onChange={e => setGlobalSearch(e.target.value)}
+                                    className="pl-3 pr-10 h-10 bg-white shadow-sm border-primary/30 focus-visible:ring-primary/30 font-mono"
+                                />
+                                {globalSearch && (
+                                    <button
+                                        className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+                                        onClick={() => setGlobalSearch('')}
+                                        title="Clear search"
+                                    >
+                                        <XCircle className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            {globalSearch && (
+                                <Badge className="bg-primary/15 text-primary border-none shrink-0 hover:bg-primary/15">
+                                    {globalSearchResults.length} found
+                                </Badge>
+                            )}
+                        </div>
+
+                        {/* Global Search Results Panel */}
+                        {globalSearch.trim() && (
+                            <div className="mt-4 space-y-3">
+                                {globalSearchResults.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-xl text-muted-foreground bg-muted/20">
+                                        <Search className="w-10 h-10 mb-3 opacity-30" />
+                                        <p className="font-medium">No student found</p>
+                                        <p className="text-xs mt-1">No records match <span className="font-mono font-semibold">&quot;{globalSearch}&quot;</span></p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-xs text-muted-foreground px-1">
+                                            Showing <span className="font-semibold text-foreground">{globalSearchResults.length}</span> result{globalSearchResults.length !== 1 ? 's' : ''} for <span className="font-mono font-semibold text-primary">&quot;{globalSearch}&quot;</span>
+                                        </p>
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                            {globalSearchResults.map(student => (
+                                                <Card key={student.id} className={`overflow-hidden border transition-all hover:shadow-md ${
+                                                    student.is_agreement_sent ? 'border-green-200 bg-green-50/30' : ''
+                                                }`}>
+                                                    <CardContent className="p-0">
+                                                        {/* Card Header Strip */}
+                                                        <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 flex items-center justify-between border-b">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
+                                                                    <GraduationCap className="w-5 h-5 text-primary" />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-bold text-sm leading-tight">{student.full_name}</p>
+                                                                    <p className="text-xs text-muted-foreground font-mono">{student.student_reg_no}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <Badge variant={student.checked_ok ? 'default' : 'secondary'} className="text-[10px]">
+                                                                    {student.checked_ok ? 'Verified' : 'Pending'}
+                                                                </Badge>
+                                                                {student.is_agreement_sent && (
+                                                                    <Badge className="bg-green-600 text-white text-[10px]">Complete</Badge>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Details Grid */}
+                                                        <div className="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                                            <div>
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">NIC</p>
+                                                                <p className="font-mono font-medium">{student.nic}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Gender</p>
+                                                                <p className="font-medium">{student.gender}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">University</p>
+                                                                <p className="font-medium truncate">{student.university}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Batch Year</p>
+                                                                <p className="font-medium">{student.batch_year}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Subject</p>
+                                                                <p className="font-medium truncate">{student.subject}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">District</p>
+                                                                <p className="font-medium">{student.district}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Email</p>
+                                                                <p className="font-medium truncate">{student.email}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Contact</p>
+                                                                <p className="font-medium">{student.contact_number}</p>
+                                                            </div>
+                                                            <div className="col-span-2">
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Training Establishment</p>
+                                                                <p className="font-medium">{student.training_establishment}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Training Period</p>
+                                                                <p className="font-medium">{student.training_start_date} → {student.training_end_date}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Admin Reg No</p>
+                                                                <p className="font-mono font-medium">{student.admin_reg_number || '—'}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Footer Actions */}
+                                                        <div className="px-4 py-2.5 border-t bg-muted/20 flex justify-between items-center">
+                                                            <p className="text-[10px] text-muted-foreground">
+                                                                Submitted: {new Date(student.submitted_at).toLocaleDateString()}
+                                                            </p>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-7 text-xs gap-1"
+                                                                onClick={() => setGlobalSearchPreviewStudent(student)}
+                                                            >
+                                                                <Eye className="w-3.5 h-3.5" />
+                                                                View Full Details
+                                                            </Button>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Hide nav/grid when global search is active */}
+                    {!globalSearch.trim() && (
+                    <>
                     {/* Breadcrumbs */}
                     <nav className="flex items-center text-sm text-muted-foreground bg-muted/30 p-2 px-4 rounded-md w-fit">
                         <button onClick={() => handleBreadcrumbClick('years')} className="hover:text-primary flex items-center gap-1 font-medium">
@@ -690,6 +855,19 @@ export default function StudentDataDashboard() {
                             />
                         </>
                     )}
+                    </>
+                    )}
+
+                    {/* Global Search Preview Dialog */}
+                    <EditStudentDialog
+                        student={globalSearchPreviewStudent}
+                        open={!!globalSearchPreviewStudent}
+                        onOpenChange={(open) => !open && setGlobalSearchPreviewStudent(null)}
+                        onSuccess={() => {
+                            setGlobalSearchPreviewStudent(null);
+                            fetchData();
+                        }}
+                    />
                 </div>
             )}
         </div>
@@ -1393,8 +1571,24 @@ function AgreementFormDialog({ student, open, onOpenChange, onSuccess }: { stude
                         />
                     </div>
 
+                    {/* Registration Number Preview */}
+                    <div className={`p-3 rounded-md border text-sm flex items-start gap-3 ${student.admin_reg_number ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-300'}`}>
+                        <div className="flex-1">
+                            <p className={`font-semibold mb-0.5 ${student.admin_reg_number ? 'text-blue-800' : 'text-amber-800'}`}>
+                                Registration Number (printed on PDF)
+                            </p>
+                            {student.admin_reg_number ? (
+                                <p className="font-mono text-blue-900 text-base font-bold">{student.admin_reg_number}</p>
+                            ) : (
+                                <p className="text-amber-700">
+                                    ⚠️ No registration number has been assigned yet. Please close this dialog, set a Reg No for this student in the table, then try again.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
                     <div className="bg-muted/30 p-3 rounded-md text-xs text-muted-foreground">
-                        <p>This will generate a PDF using the student's submission data, attach your signature and remarks, and email it directly to <strong>{student.email}</strong>.</p>
+                        <p>This will edit the student's uploaded agreement form — inserting the registration number, stamp, and date — then email it directly to <strong>{student.email}</strong>.</p>
                     </div>
 
                     <DialogFooter>

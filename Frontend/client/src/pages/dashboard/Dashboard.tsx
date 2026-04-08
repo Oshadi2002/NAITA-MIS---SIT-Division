@@ -5,6 +5,7 @@ import { MonitoringCard } from "@/components/dashboard/MonitoringCard";
 import { AssessmentCard } from "@/components/dashboard/AssessmentCard";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import RequestList from "@/pages/requests/RequestList";
 
 export default function Dashboard() {
   const { currentUser, requests } = useStore();
@@ -13,11 +14,7 @@ export default function Dashboard() {
   if (!currentUser) return null;
 
   // Calculate Stats for the Card Preview
-  const myRequests = currentUser.role === 'ADMIN'
-    ? requests
-    : currentUser.role === 'INSPECTOR'
-      ? requests.filter(r => r.assigned_inspector === currentUser.id)
-      : requests.filter(r => r.coordinator === currentUser.id);
+  const myRequests = requests;
 
   const pending = myRequests.filter(r => r.status === 'PENDING').length;
   // const approved = myRequests.filter(r => r.status === 'APPROVED').length; // Unused in launchpad
@@ -51,33 +48,40 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Admin & Coordinator Management Level */}
-      {(currentUser.role === 'ADMIN' || currentUser.role === 'UNIVERSITY_COORDINATOR') && (
+      {/* Management Modules Grid */}
+      {(currentUser.role === 'ADMIN' || currentUser.role === 'UNIVERSITY_COORDINATOR' || currentUser.role === 'ASSESSOR') && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <SeminarManagementCard
-            totalRequests={total}
-            pendingRequests={pending}
-            upcomingSeminar={upcomingSeminar}
-            onClick={() => setLocation("/seminar-management")}
-            className="col-span-1"
-          />
-          <StudentDataCard
-            totalStudents={0} // TODO: Fetch real stats
-            uncheckedCount={0}
-            onClick={() => setLocation("/student-data")}
-            className="col-span-1"
-          />
-          <MonitoringCard
-            activeMonitors={0} // TODO: Fetch real stats 
-            onClick={() => setLocation("/monitoring")}
-            className="col-span-1"
-          />
-          <AssessmentCard
-            completedStudents={0} // TODO: Fetch real stats
-            onClick={() => setLocation("/assessment")}
-            className="col-span-1"
-          />
-          {/* Future Modules: User Management, Reports, etc. */}
+          {(currentUser.role === 'ADMIN' || currentUser.role === 'UNIVERSITY_COORDINATOR') && (
+            <>
+              <SeminarManagementCard
+                totalRequests={total}
+                pendingRequests={pending}
+                upcomingSeminar={upcomingSeminar}
+                onClick={() => setLocation("/seminar-management")}
+                className="col-span-1"
+              />
+              <StudentDataCard
+                totalStudents={0} // TODO: Fetch real stats
+                uncheckedCount={0}
+                onClick={() => setLocation("/student-data")}
+                className="col-span-1"
+              />
+              <MonitoringCard
+                activeMonitors={0} // TODO: Fetch real stats 
+                onClick={() => setLocation("/monitoring")}
+                className="col-span-1"
+              />
+            </>
+          )}
+
+          {/* Assessment is for Admin, Coordinator, and Assessor */}
+          {(currentUser.role === 'ADMIN' || currentUser.role === 'UNIVERSITY_COORDINATOR' || currentUser.role === 'ASSESSOR') && (
+            <AssessmentCard
+              completedStudents={0} // TODO: Fetch real stats
+              onClick={() => setLocation("/assessment")}
+              className="col-span-1"
+            />
+          )}
         </div>
       )}
 
@@ -93,6 +97,12 @@ export default function Dashboard() {
         <div className="text-muted-foreground">
           {/* Placeholder for non-admin dashboard or redirect them? */}
           <p>Please use the side navigation to access your modules.</p>
+        </div>
+      )}
+
+      {currentUser.role === 'ADMIN' && (
+        <div className="mt-8 pt-8 border-t border-border/50">
+          <RequestList />
         </div>
       )}
     </div>

@@ -19,6 +19,26 @@ interface PendingCoordinator {
   invite_id?: string;
 }
 
+// Add interface for PendingStaff
+interface PendingStaff {
+  id: number;
+  invite_type: 'ASSESSOR' | 'INSPECTOR';
+  full_name: string;
+  initials_name: string;
+  email: string;
+  phone_number: string;
+  province: string;
+  district: string;
+  qualification: string;
+  payment_details: any;
+  assessment_fields: string[];
+  is_also_assessor: boolean;
+  assessor_data: any;
+  submitted_at: string;
+  status: string;
+  invite_id?: string;
+}
+
 // Add interface for API responses
 interface ApiResponse<T = any> {
   message?: string;
@@ -34,6 +54,7 @@ interface AppState {
   requests: SeminarRequest[];
   notifications: Notification[];
   pendingCoordinators: PendingCoordinator[];
+  pendingStaff: PendingStaff[];
   isLoading: boolean;
   error: string | null; // Add error state
 
@@ -53,7 +74,10 @@ interface AppState {
   rejectPending: (id: number, note: string) => Promise<{ success: boolean; message?: string; error?: string }>;
 
   // Staff Actions
+  fetchPendingStaff: () => Promise<void>;
   createStaffInvite: (email: string, invite_type: 'ASSESSOR' | 'INSPECTOR') => Promise<{ success: boolean; link?: string; message?: string }>;
+  approveStaffPending: (id: number) => Promise<{ success: boolean; emailSent?: boolean; error?: string; user?: User }>;
+  rejectStaffPending: (id: number, note: string) => Promise<{ success: boolean; message?: string; error?: string }>;
 
   // Request Actions
   fetchRequests: () => Promise<void>;
@@ -91,6 +115,7 @@ export const useStore = create<AppState>()((set, get) => ({
   requests: [],
   notifications: [],
   pendingCoordinators: [],
+  pendingStaff: [],
   isLoading: true,
   error: null,
 
@@ -118,6 +143,7 @@ export const useStore = create<AppState>()((set, get) => ({
           if (user.role === 'ADMIN') {
             promises.push(get().fetchUsers());
             promises.push(get().fetchPendingCoordinators());
+            promises.push(get().fetchPendingStaff());
           }
 
           await Promise.all(promises);
@@ -163,6 +189,7 @@ export const useStore = create<AppState>()((set, get) => ({
         notifications: [],
         users: [],
         pendingCoordinators: [],
+        pendingStaff: [],
         error: null
       });
     } catch (e: any) {
@@ -218,6 +245,86 @@ export const useStore = create<AppState>()((set, get) => ({
     } catch (e: any) {
       console.error("Create staff invite failed", e);
       return { success: false, message: e.message || "Network error" };
+    }
+  },
+
+  fetchPendingStaff: async () => {
+    try {
+      const res = await fetch('/api/staff-invites/list_pending/', {
+        credentials: 'include'
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        set({ pendingStaff: data, error: null });
+      } else if (res.status === 403) {
+        set({ error: "Permission denied to fetch pending staff" });
+      } else {
+        set({ error: `Failed to fetch pending staff: ${res.status}` });
+      }
+    } catch (e: any) {
+      console.error("Fetch pending staff failed", e);
+      set({ error: e.message || "Failed to fetch pending staff" });
+    }
+  },
+
+  approveStaffPending: async (id) => {
+    try {
+      const res = await apiRequest('POST', `/api/staff-invites/${id}/approve_pending/`);
+      const data: ApiResponse = await res.json();
+
+      if (res.ok) {
+        await get().fetchPendingStaff();
+        await get().fetchUsers();
+
+        return {
+          success: true,
+          user: data.user,
+          emailSent: data.email_sent || false,
+          message: data.message
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || "Failed to approve staff registration"
+        };
+      }
+    } catch (e: any) {
+      console.error("Approve staff pending failed", e);
+      return {
+        success: false,
+        error: e.message || "Network error during staff approval"
+      };
+    }
+  },
+
+  rejectStaffPending: async (id, note) => {
+    try {
+      const res = await apiRequest('POST', `/api/staff-invites/${id}/reject_pending/`, {
+        note
+      });
+
+      const data: ApiResponse = await res.json();
+
+      if (res.ok) {
+        await get().fetchPendingStaff();
+
+        return {
+          success: true,
+          message: data.message || "Staff registration rejected successfully"
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || "Failed to reject staff registration"
+        };
+      }
+    } catch (e: any) {
+      console.error("Reject staff pending failed", e);
+      return {
+        success: false,
+        error: e.message || "Network error during staff rejection"
+      };
     }
   },
 
@@ -344,6 +451,12 @@ export const useStore = create<AppState>()((set, get) => ({
   deleteUser: async (id) => {
     try {
       const res = await apiRequest('DELETE', `/api/management/${id}/delete_user/`);
+      
+      if (res.status === 204) {
+        await get().fetchUsers();
+        return { success: true, message: "User deleted successfully" };
+      }
+
       const data: ApiResponse = await res.json();
 
       if (res.ok) {

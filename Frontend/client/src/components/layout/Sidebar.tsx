@@ -8,7 +8,8 @@ import {
   LogOut,
   School,
   ClipboardCheck,
-  Bell
+  Bell,
+  Microscope
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -56,7 +57,7 @@ export function Sidebar() {
         {currentUser.role === 'UNIVERSITY_COORDINATOR' && (
           <>
             <NavItem href="/create-request" icon={FileText} label="New Seminar Request" />
-            <NavItem href="/requests" icon={ClipboardCheck} label="My Seminars" />
+            <NavItem href="/requests" icon={ClipboardCheck} label="My Seminar Requests" />
             <NavItem href="/info-change-requests" icon={Users} label="Novation Requests" />
           </>
         )}
@@ -66,12 +67,19 @@ export function Sidebar() {
             <NavItem href="/requests" icon={ClipboardCheck} label="All Requests" />
             <NavItem href="/student-data" icon={Users} label="Student Data" />
             <NavItem href="/users" icon={Users} label="User Management" />
+            <NavItem href="/assessment" icon={Microscope} label="Assessment Management" />
           </>
         )}
 
         {currentUser.role === 'INSPECTOR' && (
           <>
             <NavItem href="/requests" icon={ClipboardCheck} label="Assigned Seminars" />
+          </>
+        )}
+
+        {currentUser.role === 'ASSESSOR' && (
+          <>
+            <NavItem href="/assessor-dashboard" icon={Microscope} label="Student Assessments" />
           </>
         )}
       </div>

@@ -1,5 +1,9 @@
 from rest_framework import serializers
-from .models import User, SeminarRequest, Notification, FormLink, StudentSubmission, NovationRequest, DataEditRequest, AuditLog
+from .models import (
+    User, SeminarRequest, Notification, FormLink, StudentSubmission, 
+    NovationRequest, DataEditRequest, AuditLog, VivaPanel, VivaAssignment, AssessmentMark,
+    AssessorDailyReport
+)
 
 class UserSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
@@ -72,3 +76,41 @@ class AuditLogSerializer(serializers.ModelSerializer):
         model = AuditLog
         fields = '__all__'
         read_only_fields = ('performed_by', 'timestamp')
+
+
+class AssessmentMarkSerializer(serializers.ModelSerializer):
+    assessor_name = serializers.ReadOnlyField(source='assessor.get_full_name')
+
+    class Meta:
+        model = AssessmentMark
+        fields = '__all__'
+        read_only_fields = ('assessor', 'total_mark', 'status', 'created_at', 'updated_at')
+
+class VivaAssignmentSerializer(serializers.ModelSerializer):
+    student_details = StudentSubmissionSerializer(source='student', read_only=True)
+    marks = AssessmentMarkSerializer(read_only=True)
+    panel_name = serializers.ReadOnlyField(source='panel.name')
+    marking_criteria = serializers.ReadOnlyField(source='panel.marking_criteria')
+    
+    class Meta:
+        model = VivaAssignment
+        fields = '__all__'
+
+
+class VivaPanelSerializer(serializers.ModelSerializer):
+    assessor_name = serializers.ReadOnlyField(source='assessor.get_full_name')
+    # We can nest assignments or just provide a count
+    assignments = VivaAssignmentSerializer(many=True, read_only=True)
+    student_count = serializers.IntegerField(source='assignments.count', read_only=True)
+
+    class Meta:
+        model = VivaPanel
+        fields = '__all__'
+
+class AssessorDailyReportSerializer(serializers.ModelSerializer):
+    assessor_name = serializers.ReadOnlyField(source='assessor.get_full_name')
+    
+    class Meta:
+        model = AssessorDailyReport
+        fields = '__all__'
+        read_only_fields = ('assessor', 'student_count', 'is_received_by_admin', 'received_at', 'created_at', 'updated_at')

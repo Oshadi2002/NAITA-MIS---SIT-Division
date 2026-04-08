@@ -18,6 +18,7 @@ import NovationRequestList from "@/pages/requests/NovationRequestList";
 import StudentForm from "@/pages/student-data/StudentForm";
 import StudentDataDashboard from "@/pages/student-data/StudentDataDashboard";
 import AssessmentDashboard from "@/pages/assessment/AssessmentDashboard";
+import AssessorDashboard from "@/pages/assessor/AssessorDashboard";
 import MonitoringDashboard from "@/pages/monitoring/MonitoringDashboard";
 import { AppShell } from "@/components/layout/AppShell";
 import { useStore } from "@/lib/store";
@@ -88,6 +89,9 @@ function Router() {
       </Route>
       <Route path="/assessment">
         <ProtectedRoute component={AssessmentDashboard} />
+      </Route>
+      <Route path="/assessor-dashboard">
+        <ProtectedRoute component={AssessorDashboard} />
       </Route>
       <Route path="/monitoring">
         <ProtectedRoute component={MonitoringDashboard} />

@@ -21,15 +21,11 @@ export default function RequestList() {
 
   if (!currentUser) return null;
 
-  const myRequests = currentUser.role === 'ADMIN'
-    ? requests
-    : currentUser.role === 'INSPECTOR'
-      ? requests.filter(r => r.assigned_inspector === currentUser.id)
-      : requests.filter(r => r.coordinator === currentUser.id);
+  const myRequests = requests;
 
   const filteredRequests = myRequests.filter(r =>
-    r.university_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.location.toLowerCase().includes(searchTerm.toLowerCase())
+    (r.university_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (r.location || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (status: RequestStatus) => {
@@ -47,7 +43,9 @@ export default function RequestList() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-serif font-bold tracking-tight text-primary">Seminar Requests</h2>
+          <h2 className="text-3xl font-serif font-bold tracking-tight text-primary">
+            {currentUser.role === 'UNIVERSITY_COORDINATOR' ? 'My Seminar Requests' : 'Seminar Requests'}
+          </h2>
           <p className="text-muted-foreground">Manage and track seminar applications.</p>
         </div>
         {currentUser.role === 'UNIVERSITY_COORDINATOR' && (

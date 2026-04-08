@@ -74,6 +74,10 @@ export default function UserManagement() {
     rejectPending,
     createInvite,
     createStaffInvite,
+    pendingStaff,
+    fetchPendingStaff,
+    approveStaffPending,
+    rejectStaffPending,
     error,
     clearError
   } = useStore();
@@ -122,6 +126,12 @@ export default function UserManagement() {
   const [approvePassword, setApprovePassword] = useState("");
   const [rejectNote, setRejectNote] = useState("");
   const [emailSending, setEmailSending] = useState(false);
+
+  // ─── Pending Staff ────────────────────────────────────────────────────────
+  const [rejectStaffOpen, setRejectStaffOpen] = useState(false);
+  const [selectedStaffPending, setSelectedStaffPending] = useState<any>(null);
+  const [rejectStaffNote, setRejectStaffNote] = useState("");
+  const [staffActionLoading, setStaffActionLoading] = useState<number | null>(null);
 
   // Fetch pending coordinators on mount
   useEffect(() => {
@@ -209,6 +219,68 @@ export default function UserManagement() {
         setRejectOpen(false);
         setRejectNote("");
         setSelectedPending(null);
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to reject.",
+          variant: "destructive"
+        });
+      }
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e.message || "Network error.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Staff Handlers ─────────────────────────────────────────────────────────
+  const handleApproveStaff = async (id: number) => {
+    setStaffActionLoading(id);
+    try {
+      const result = await approveStaffPending(id);
+      if (result.success) {
+        toast({
+          title: result.emailSent ? "✅ Approved & Email Sent!" : "✅ Approved",
+          description: result.emailSent
+            ? `The account has been created and credentials sent to their email.`
+            : `The account has been created. (Email delivery failed)`,
+          variant: result.emailSent ? "default" : "warning",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to approve staff.",
+          variant: "destructive"
+        });
+      }
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e.message || "Network error.",
+        variant: "destructive"
+      });
+    } finally {
+      setStaffActionLoading(null);
+    }
+  };
+
+  const handleRejectStaff = async () => {
+    if (!selectedStaffPending) return;
+    setLoading(true);
+    try {
+      const result = await rejectStaffPending(selectedStaffPending.id, rejectStaffNote);
+      if (result.success) {
+        toast({
+          title: "Rejected",
+          description: result.message || "Staff request rejected."
+        });
+        setRejectStaffOpen(false);
+        setRejectStaffNote("");
+        setSelectedStaffPending(null);
       } else {
         toast({
           title: "Error",
@@ -775,6 +847,127 @@ export default function UserManagement() {
           </Table>
         </div>
       )}
+
+      {/* Pending Staff Approvals (Assessors/Inspectors) */}
+      {pendingStaff && pendingStaff.length > 0 && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 overflow-hidden shadow-sm">
+          <div className="flex items-center gap-3 p-4 border-b border-blue-200 bg-blue-100">
+            <Clock className="h-5 w-5 text-blue-600" />
+            <div>
+              <h3 className="font-semibold text-blue-800">Pending Staff Approvals</h3>
+              <p className="text-xs text-blue-600">
+                These Assessors and Inspectors have submitted their details and are waiting for account creation.
+              </p>
+            </div>
+            <Badge className="ml-auto bg-blue-600 text-white">
+              {pendingStaff.length} Pending
+            </Badge>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-blue-50 hover:bg-blue-50 hover:border-blue-50">
+                <TableHead>Type</TableHead>
+                <TableHead>Name & Email</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Submitted</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pendingStaff.map((p: any) => (
+                <TableRow key={p.id} className="bg-white">
+                  <TableCell>
+                    <Badge variant="outline" className={p.invite_type === 'ASSESSOR' ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-amber-50 text-amber-700 border-amber-200"}>
+                      {p.invite_type || "STAFF"}
+                    </Badge>
+                    {p.is_also_assessor && <Badge variant="outline" className="ml-1 bg-purple-50 text-purple-700 border-purple-200 text-[10px]">+ASSESSOR</Badge>}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{p.full_name}</span>
+                      <span className="text-xs text-muted-foreground">{p.email}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col text-sm">
+                      <span className="font-medium">{p.district || "-"}</span>
+                      <span className="text-xs text-muted-foreground">{p.province || "-"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-muted-foreground">{p.phone_number || "-"}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(p.submitted_at).toLocaleDateString()}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => handleApproveStaff(p.id)}
+                        disabled={staffActionLoading === p.id}
+                      >
+                        {staffActionLoading === p.id ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                        )}
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          setSelectedStaffPending(p);
+                          setRejectStaffOpen(true);
+                        }}
+                        disabled={staffActionLoading === p.id}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" /> Reject
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Reject Staff Dialog */}
+      <Dialog open={rejectStaffOpen} onOpenChange={setRejectStaffOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Staff Registration</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reject the registration request from {selectedStaffPending?.full_name}?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Rejection Note (Optional)</Label>
+              <Input
+                placeholder="Reason for rejection..."
+                value={rejectStaffNote}
+                onChange={(e) => setRejectStaffNote(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectStaffOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleRejectStaff} disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Confirm Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center bg-card p-4 rounded-md border shadow-sm">

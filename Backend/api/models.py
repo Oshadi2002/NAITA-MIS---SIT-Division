@@ -311,3 +311,103 @@ class StaffPendingRegistration(models.Model):
 
     def __str__(self):
         return f"{self.invite_type} Pending: {self.full_name} ({self.status})"
+
+
+# ─── Viva & Assessment Management ─────────────────────────────────────────────
+
+class VivaPanel(models.Model):
+    name = models.CharField(max_length=255)  # e.g., "Panel 01"
+    assessor = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        limit_choices_to={'role': 'ASSESSOR'},
+        related_name='assigned_viva_panels'
+    )
+    dates = models.JSONField(default=list) # Array of date strings e.g., ["2023-10-01", "2023-10-02"]
+    location = models.CharField(max_length=255, null=True, blank=True)
+    marking_criteria = models.JSONField(default=list) # Array of objects: [{"name": "Daily Diary", "max": 100}]
+    
+    # Cohort Fields
+    university = models.CharField(max_length=255, null=True, blank=True)
+    subject = models.CharField(max_length=255, null=True, blank=True)
+    batch_year = models.CharField(max_length=50, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name'] # Cannot order by JSONField easily without extra logic, ordered by name instead.
+
+    def __str__(self):
+        dates_str = ", ".join(self.dates) if self.dates else "No dates"
+        return f"{self.name} - {dates_str}"
+
+
+class VivaAssignment(models.Model):
+    panel = models.ForeignKey(VivaPanel, on_delete=models.CASCADE, related_name='assignments')
+    student = models.OneToOneField(
+        'StudentSubmission', on_delete=models.CASCADE,
+        related_name='viva_assignment'
+    )
+    slot_number = models.IntegerField(null=True, blank=True)
+    scheduled_time = models.TimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['panel', 'slot_number', 'scheduled_time']
+        # We might not strictly enforce unique_together for slot_number if it's more flexible
+        # but usually it helps with daily ordering.
+
+    def __str__(self):
+        return f"Viva: {self.student.initials_name} - {self.panel.name} on {self.panel.dates}"
+
+class AssessmentMark(models.Model):
+    assignment = models.OneToOneField(VivaAssignment, on_delete=models.CASCADE, related_name='marks')
+    assessor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_marks')
+    
+    # Dynamic marks data based on VivaPanel marking_criteria
+    marks_data = models.JSONField(default=dict)
+    
+    evaluation_condition = models.CharField(
+        max_length=50, 
+        choices=[
+            ('NORMAL', 'Normal'), 
+            ('INCOMPLETE_DIARY', 'Incomplete Daily Diary'), 
+            ('EXTEND', 'Extend'), 
+            ('VIVA_REPEAT', 'Viva Repeat')
+        ], 
+        default='NORMAL'
+    )
+    
+    # Calculated Fields
+    total_mark = models.DecimalField(max_digits=5, decimal_places=2, help_text="Calculated Total Mark")
+    status = models.CharField(max_length=20, choices=[('PASS', 'Pass'), ('SPECIAL_STATUS', 'Special Status')])
+    
+    # Text Field
+    assessor_remarks = models.TextField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Marks for {self.assignment.student.student_reg_no} by {self.assessor.username}"
+
+class AssessorDailyReport(models.Model):
+    assessor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='daily_reports', limit_choices_to={'role': 'ASSESSOR'})
+    date = models.DateField()
+    student_count = models.IntegerField(default=0)
+    
+    accomplishment_report = models.FileField(upload_to='assessor_reports/accomplishment/', null=True, blank=True)
+    claim_form = models.FileField(upload_to='assessor_reports/claims/', null=True, blank=True)
+    
+    is_received_by_admin = models.BooleanField(default=False)
+    received_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('assessor', 'date')
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"Report - {self.assessor.username} on {self.date}"
