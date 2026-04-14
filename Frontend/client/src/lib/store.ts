@@ -64,19 +64,22 @@ interface AppState {
   logout: () => Promise<void>;
   fetchUsers: () => Promise<void>;
   createUser: (data: CreateUserData) => Promise<{ success: boolean; message?: string }>;
-  resetPassword: (id: number, password: string) => Promise<{ success: boolean; message?: string }>;
-  deleteUser: (id: number) => Promise<{ success: boolean; message?: string }>;
+  resetPassword: (id: number, newPassword: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  deleteUser: (id: number) => Promise<{ success: boolean; message?: string; error?: string }>;
+  updateUser: (id: number, data: any) => Promise<{ success: boolean; data?: any; error?: string }>;
 
   // Coordinator Actions
   fetchPendingCoordinators: () => Promise<void>;
+  updatePendingCoordinator: (id: number, data: any) => Promise<{ success: boolean; message?: string; error?: string }>;
   createInvite: (email: string) => Promise<{ success: boolean; link?: string; message?: string }>;
-  approvePending: (id: number, username: string, password: string) => Promise<{ success: boolean; emailSent?: boolean; error?: string }>;
+  approvePending: (id: number, username: string, password: string) => Promise<{ success: boolean; data?: any; error?: string; emailSent?: boolean; message?: string }>;
   rejectPending: (id: number, note: string) => Promise<{ success: boolean; message?: string; error?: string }>;
 
   // Staff Actions
   fetchPendingStaff: () => Promise<void>;
+  updatePendingStaff: (id: number, data: any) => Promise<{ success: boolean; message?: string; error?: string }>;
   createStaffInvite: (email: string, invite_type: 'ASSESSOR' | 'INSPECTOR') => Promise<{ success: boolean; link?: string; message?: string }>;
-  approveStaffPending: (id: number) => Promise<{ success: boolean; emailSent?: boolean; error?: string; user?: User }>;
+  approveStaffPending: (id: number) => Promise<{ success: boolean; emailSent?: boolean; error?: string; user?: User; message?: string }>;
   rejectStaffPending: (id: number, note: string) => Promise<{ success: boolean; message?: string; error?: string }>;
 
   // Request Actions
@@ -268,6 +271,22 @@ export const useStore = create<AppState>()((set, get) => ({
     }
   },
 
+  updatePendingStaff: async (id, payload) => {
+    try {
+      const res = await apiRequest('PATCH', `/api/staff-invites/${id}/update_staff_pending/`, payload);
+      const data = await res.json();
+      if (res.ok) {
+        await get().fetchPendingStaff();
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, error: data.message || "Failed to update pending staff" };
+      }
+    } catch (e: any) {
+      console.error("Update pending staff failed", e);
+      return { success: false, error: e.message || "Network error" };
+    }
+  },
+
   approveStaffPending: async (id) => {
     try {
       const res = await apiRequest('POST', `/api/staff-invites/${id}/approve_pending/`);
@@ -348,6 +367,22 @@ export const useStore = create<AppState>()((set, get) => ({
     }
   },
 
+  updatePendingCoordinator: async (id, payload) => {
+    try {
+      const res = await apiRequest('PATCH', `/api/coordinator-invites/${id}/update_pending/`, payload);
+      const data = await res.json();
+      if (res.ok) {
+        await get().fetchPendingCoordinators();
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, error: data.message || "Failed to update pending coordinator" };
+      }
+    } catch (e: any) {
+      console.error("Update pending coordinator failed", e);
+      return { success: false, error: e.message || "Network error" };
+    }
+  },
+
   approvePending: async (id, username, password) => {
     try {
       const res = await apiRequest('POST', `/api/coordinator-invites/${id}/approve_pending/`, {
@@ -412,6 +447,21 @@ export const useStore = create<AppState>()((set, get) => ({
         success: false,
         error: e.message || "Network error during rejection"
       };
+    }
+  },
+
+  updateUser: async (id, data) => {
+    try {
+      const res = await apiRequest('PATCH', `/api/management/${id}/update_user/`, data);
+      const resData = await res.json();
+      if (res.ok) {
+        await get().fetchUsers();
+        return { success: true, data: resData };
+      }
+      return { success: false, error: resData.message || "Failed to update user." };
+    } catch (e: any) {
+      console.error("Update user failed", e);
+      return { success: false, error: e.message || "Network error" };
     }
   },
 

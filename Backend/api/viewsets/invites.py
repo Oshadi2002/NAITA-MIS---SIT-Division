@@ -249,6 +249,42 @@ class CoordinatorInviteViewSet(viewsets.ViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    # ─── Admin: Update Pending Registration ────────────────────────────────────
+    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
+    def update_pending(self, request, pk=None):
+        if request.user.role != 'ADMIN':
+            return Response(
+                {'message': 'Permission denied. Only admins can update registrations.'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            pending = CoordinatorPendingRegistration.objects.get(id=pk)
+            
+            # Update allowed fields
+            fields_to_update = ['full_name', 'email', 'university', 'faculty', 'department', 'designation', 'phone_number', 'whatsapp_number']
+            for field in fields_to_update:
+                if field in request.data:
+                    setattr(pending, field, request.data.get(field, '').strip())
+            
+            pending.save()
+            return Response({
+                'message': 'Registration updated successfully.',
+                'id': pending.id
+            }, status=status.HTTP_200_OK)
+            
+        except CoordinatorPendingRegistration.DoesNotExist:
+            return Response(
+                {'message': 'Pending registration not found.'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error updating registration {pk}: {str(e)}")
+            return Response(
+                {'message': f'Error updating registration: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     # ─── Admin: Approve → Create User Account + Email ─────────────────────────
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def approve_pending(self, request, pk=None):

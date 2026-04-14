@@ -15,6 +15,16 @@ class User(AbstractUser):
     designation = models.CharField(max_length=255, null=True, blank=True)
     whatsapp_number = models.CharField(max_length=20, null=True, blank=True)
     phone_number = models.CharField(max_length=20, null=True, blank=True)
+    
+    # Extra fields for staff (Assessors, Inspectors)
+    permanent_address = models.CharField(max_length=255, null=True, blank=True)
+    qualification = models.CharField(max_length=255, null=True, blank=True)
+    province = models.CharField(max_length=255, null=True, blank=True)
+    district = models.CharField(max_length=255, null=True, blank=True)
+    payment_details = models.JSONField(null=True, blank=True)
+    assessment_fields = models.JSONField(null=True, blank=True)
+    is_also_assessor = models.BooleanField(default=False)
+
     email = models.EmailField(unique=True)
 
     REQUIRED_FIELDS = ['email', 'role']

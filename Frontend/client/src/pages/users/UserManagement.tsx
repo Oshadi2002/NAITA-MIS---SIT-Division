@@ -66,16 +66,19 @@ export default function UserManagement() {
   const {
     users,
     createUser,
+    updateUser,
     resetPassword,
     deleteUser,
     pendingCoordinators,
     fetchPendingCoordinators,
+    updatePendingCoordinator,
     approvePending,
     rejectPending,
     createInvite,
     createStaffInvite,
     pendingStaff,
     fetchPendingStaff,
+    updatePendingStaff,
     approveStaffPending,
     rejectStaffPending,
     error,
@@ -117,6 +120,9 @@ export default function UserManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [viewUserDialogOpen, setViewUserDialogOpen] = useState(false);
+  const [editUserData, setEditUserData] = useState<any>(null);
+  const [editUserLoading, setEditUserLoading] = useState(false);
 
   // ─── Pending Registrations ──────────────────────────────────────────────────
   const [approveOpen, setApproveOpen] = useState(false);
@@ -127,11 +133,19 @@ export default function UserManagement() {
   const [rejectNote, setRejectNote] = useState("");
   const [emailSending, setEmailSending] = useState(false);
 
+  const [viewPendingOpen, setViewPendingOpen] = useState(false);
+  const [editPendingData, setEditPendingData] = useState<any>(null);
+  const [editPendingLoading, setEditPendingLoading] = useState(false);
+
   // ─── Pending Staff ────────────────────────────────────────────────────────
   const [rejectStaffOpen, setRejectStaffOpen] = useState(false);
   const [selectedStaffPending, setSelectedStaffPending] = useState<any>(null);
   const [rejectStaffNote, setRejectStaffNote] = useState("");
   const [staffActionLoading, setStaffActionLoading] = useState<number | null>(null);
+
+  const [viewStaffPendingOpen, setViewStaffPendingOpen] = useState(false);
+  const [editStaffPendingData, setEditStaffPendingData] = useState<any>(null);
+  const [editStaffPendingLoading, setEditStaffPendingLoading] = useState(false);
 
   // Fetch pending coordinators on mount
   useEffect(() => {
@@ -237,7 +251,34 @@ export default function UserManagement() {
     }
   };
 
+  const handleEditPending = async () => {
+    if (!editPendingData) return;
+    setEditPendingLoading(true);
+    const result = await updatePendingCoordinator(editPendingData.id, editPendingData);
+    setEditPendingLoading(false);
+    if (result.success) {
+      toast({ title: "Updated", description: result.message || "Coordinator details updated." });
+      setViewPendingOpen(false);
+      // optionally refresh UI: `fetchPendingCoordinators()` is already called inside store
+    } else {
+      toast({ title: "Error", description: result.error || "Failed to update details.", variant: "destructive" });
+    }
+  };
+
   // ─── Staff Handlers ─────────────────────────────────────────────────────────
+  const handleEditStaffPending = async () => {
+    if (!editStaffPendingData) return;
+    setEditStaffPendingLoading(true);
+    const result = await updatePendingStaff(editStaffPendingData.id, editStaffPendingData);
+    setEditStaffPendingLoading(false);
+    if (result.success) {
+      toast({ title: "Updated", description: result.message || "Staff details updated." });
+      setViewStaffPendingOpen(false);
+    } else {
+      toast({ title: "Error", description: result.error || "Failed to update details.", variant: "destructive" });
+    }
+  };
+
   const handleApproveStaff = async (id: number) => {
     setStaffActionLoading(id);
     try {
@@ -419,6 +460,19 @@ export default function UserManagement() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditUser = async () => {
+    if (!editUserData) return;
+    setEditUserLoading(true);
+    const result = await updateUser(editUserData.id, editUserData);
+    setEditUserLoading(false);
+    if (result.success) {
+      toast({ title: "Updated", description: "User details updated successfully." });
+      setViewUserDialogOpen(false);
+    } else {
+      toast({ title: "Error", description: result.error || "Failed to update details.", variant: "destructive" });
     }
   };
 
@@ -773,10 +827,8 @@ export default function UserManagement() {
           <Table>
             <TableHeader>
               <TableRow className="bg-amber-50">
-                <TableHead>Name & Email</TableHead>
-                <TableHead>University / Faculty</TableHead>
-                <TableHead>Department / Designation</TableHead>
-                <TableHead>Phone</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Designation</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
@@ -792,18 +844,9 @@ export default function UserManagement() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col text-sm">
-                      <span className="font-medium">{p.university || "-"}</span>
-                      <span className="text-xs text-muted-foreground">{p.faculty || "-"}</span>
+                      <span className="font-medium">{p.designation || "-"}</span>
+                      <span className="text-xs text-muted-foreground">{p.university || "-"}</span>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col text-sm">
-                      <span>{p.department || "-"}</span>
-                      <span className="text-xs text-muted-foreground">{p.designation || "-"}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">{p.phone_number || "-"}</span>
                   </TableCell>
                   <TableCell>
                     <span className="text-xs text-muted-foreground">
@@ -812,6 +855,16 @@ export default function UserManagement() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditPendingData({ ...p });
+                          setViewPendingOpen(true);
+                        }}
+                      >
+                        <Search className="h-4 w-4 mr-1" /> View Details
+                      </Button>
                       <Button
                         size="sm"
                         className="bg-green-600 hover:bg-green-700 text-white"
@@ -847,6 +900,63 @@ export default function UserManagement() {
           </Table>
         </div>
       )}
+
+      {/* View/Edit Pending Coordinator Dialog */}
+      <Dialog open={viewPendingOpen} onOpenChange={setViewPendingOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>View & Edit Details</DialogTitle>
+            <DialogDescription>
+              View and modify the form details submitted by the coordinator before approval.
+            </DialogDescription>
+          </DialogHeader>
+          {editPendingData && (
+            <div className="space-y-4 py-2 mt-2 max-h-[60vh] overflow-y-auto px-1">
+              <div className="space-y-2">
+                <Label>Full Name</Label>
+                <Input value={editPendingData.full_name} onChange={e => setEditPendingData({...editPendingData, full_name: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input type="email" value={editPendingData.email} onChange={e => setEditPendingData({...editPendingData, email: e.target.value})} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <Input value={editPendingData.phone_number || ''} onChange={e => setEditPendingData({...editPendingData, phone_number: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>WhatsApp</Label>
+                  <Input value={editPendingData.whatsapp_number || ''} onChange={e => setEditPendingData({...editPendingData, whatsapp_number: e.target.value})} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Designation</Label>
+                <Input value={editPendingData.designation || ''} onChange={e => setEditPendingData({...editPendingData, designation: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>University</Label>
+                <Input value={editPendingData.university || ''} onChange={e => setEditPendingData({...editPendingData, university: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Faculty</Label>
+                <Input value={editPendingData.faculty || ''} onChange={e => setEditPendingData({...editPendingData, faculty: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Department</Label>
+                <Input value={editPendingData.department || ''} onChange={e => setEditPendingData({...editPendingData, department: e.target.value})} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewPendingOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditPending} disabled={editPendingLoading}>
+              {editPendingLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Pending Staff Approvals (Assessors/Inspectors) */}
       {pendingStaff && pendingStaff.length > 0 && (
@@ -908,6 +1018,16 @@ export default function UserManagement() {
                     <div className="flex justify-end gap-2">
                       <Button
                         size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditStaffPendingData({ ...p });
+                          setViewStaffPendingOpen(true);
+                        }}
+                      >
+                        <Search className="h-4 w-4 mr-1" /> View Details
+                      </Button>
+                      <Button
+                        size="sm"
                         className="bg-green-600 hover:bg-green-700 text-white"
                         onClick={() => handleApproveStaff(p.id)}
                         disabled={staffActionLoading === p.id}
@@ -939,6 +1059,126 @@ export default function UserManagement() {
           </Table>
         </div>
       )}
+
+      {/* View/Edit Pending Staff Dialog */}
+      <Dialog open={viewStaffPendingOpen} onOpenChange={setViewStaffPendingOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>View & Edit Staff Details</DialogTitle>
+            <DialogDescription>
+              View and modify the form details, including payment accounts, before approval.
+            </DialogDescription>
+          </DialogHeader>
+          {editStaffPendingData && (
+            <div className="space-y-6 py-2 mt-2 max-h-[60vh] overflow-y-auto px-1">
+              
+              {/* Personal details */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold text-muted-foreground border-b pb-1">Personal Details</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2 col-span-2">
+                    <Label>Full Name</Label>
+                    <Input value={editStaffPendingData.full_name} onChange={e => setEditStaffPendingData({...editStaffPendingData, full_name: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Initials Name</Label>
+                    <Input value={editStaffPendingData.initials_name || ''} onChange={e => setEditStaffPendingData({...editStaffPendingData, initials_name: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input type="email" value={editStaffPendingData.email} onChange={e => setEditStaffPendingData({...editStaffPendingData, email: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input value={editStaffPendingData.phone_number || ''} onChange={e => setEditStaffPendingData({...editStaffPendingData, phone_number: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Qualification</Label>
+                    <Input value={editStaffPendingData.qualification || ''} onChange={e => setEditStaffPendingData({...editStaffPendingData, qualification: e.target.value})} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Location */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold text-muted-foreground border-b pb-1">Location Details</h4>
+                <div className="space-y-2">
+                  <Label>Permanent Address</Label>
+                  <Input value={editStaffPendingData.permanent_address || ''} onChange={e => setEditStaffPendingData({...editStaffPendingData, permanent_address: e.target.value})} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Province</Label>
+                    <Input value={editStaffPendingData.province || ''} onChange={e => setEditStaffPendingData({...editStaffPendingData, province: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>District</Label>
+                    <Input value={editStaffPendingData.district || ''} onChange={e => setEditStaffPendingData({...editStaffPendingData, district: e.target.value})} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Assessor Details / Payment */}
+              {(editStaffPendingData.invite_type === 'ASSESSOR' || editStaffPendingData.is_also_assessor) && (
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-muted-foreground border-b pb-1">Assessor / Payment Details</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 col-span-2">
+                      <Label>Account Number</Label>
+                      <Input 
+                        value={editStaffPendingData.payment_details?.account_number || ''} 
+                        onChange={e => setEditStaffPendingData({
+                          ...editStaffPendingData, 
+                          payment_details: { ...(editStaffPendingData.payment_details || {}), account_number: e.target.value }
+                        })} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bank Name</Label>
+                      <Input 
+                        value={editStaffPendingData.payment_details?.bank_name || ''} 
+                        onChange={e => setEditStaffPendingData({
+                          ...editStaffPendingData, 
+                          payment_details: { ...(editStaffPendingData.payment_details || {}), bank_name: e.target.value }
+                        })} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Branch</Label>
+                      <Input 
+                        value={editStaffPendingData.payment_details?.branch || ''} 
+                        onChange={e => setEditStaffPendingData({
+                          ...editStaffPendingData, 
+                          payment_details: { ...(editStaffPendingData.payment_details || {}), branch: e.target.value }
+                        })} 
+                      />
+                    </div>
+                  </div>
+                  
+                  {editStaffPendingData.assessment_fields && editStaffPendingData.assessment_fields.length > 0 && (
+                     <div className="space-y-2">
+                       <Label>Assessment Fields (Read-only)</Label>
+                       <div className="flex flex-wrap gap-1">
+                         {editStaffPendingData.assessment_fields.map((f: string, i: number) => (
+                           <Badge key={i} variant="secondary">{f}</Badge>
+                         ))}
+                       </div>
+                     </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewStaffPendingOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditStaffPending} disabled={editStaffPendingLoading}>
+              {editStaffPendingLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject Staff Dialog */}
       <Dialog open={rejectStaffOpen} onOpenChange={setRejectStaffOpen}>
@@ -1057,7 +1297,19 @@ export default function UserManagement() {
                           {user.designation && <span>{user.designation}</span>}
                         </div>
                       </CardContent>
-                      <CardFooter className="pt-2 flex justify-end gap-2 border-t bg-muted/10">
+                      <CardFooter className="pt-2 flex justify-end gap-2 border-t bg-muted/10 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setEditUserData({ ...user });
+                            setViewUserDialogOpen(true);
+                          }}
+                          title="View Details"
+                        >
+                          <Search className="h-4 w-4 mr-1" /> View
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -1281,6 +1533,153 @@ export default function UserManagement() {
               ) : (
                 "Reset Password"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View User Dialog */}
+      <Dialog open={viewUserDialogOpen} onOpenChange={setViewUserDialogOpen}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>View & Edit User Details</DialogTitle>
+            <DialogDescription>
+              Modify the profile information for this user.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editUserData && (
+            <div className="py-4 space-y-6">
+              
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold text-muted-foreground border-b pb-1">Basic Details</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2 col-span-2">
+                    <Label>Full Name</Label>
+                    <Input value={editUserData.name || ''} onChange={e => setEditUserData({...editUserData, name: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Username (Read-only)</Label>
+                    <Input value={editUserData.username || ''} disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input value={editUserData.email || ''} onChange={e => setEditUserData({...editUserData, email: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone Number</Label>
+                    <Input value={editUserData.phone_number || ''} onChange={e => setEditUserData({...editUserData, phone_number: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>WhatsApp Number</Label>
+                    <Input value={editUserData.whatsapp_number || ''} onChange={e => setEditUserData({...editUserData, whatsapp_number: e.target.value})} />
+                  </div>
+                </div>
+              </div>
+
+              {(editUserData.role === 'ASSESSOR' || editUserData.role === 'INSPECTOR') && (
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-muted-foreground border-b pb-1">Staff Location / Profile</h4>
+                  <div className="space-y-2">
+                    <Label>Permanent Address</Label>
+                    <Input value={editUserData.permanent_address || ''} onChange={e => setEditUserData({...editUserData, permanent_address: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Province</Label>
+                      <Input value={editUserData.province || ''} onChange={e => setEditUserData({...editUserData, province: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>District</Label>
+                      <Input value={editUserData.district || ''} onChange={e => setEditUserData({...editUserData, district: e.target.value})} />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Qualification</Label>
+                      <Input value={editUserData.qualification || ''} onChange={e => setEditUserData({...editUserData, qualification: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(editUserData.role === 'ASSESSOR' || editUserData.is_also_assessor) && (
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-muted-foreground border-b pb-1">Assessor / Payment Details</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 col-span-2">
+                      <Label>Account Number</Label>
+                      <Input 
+                        value={editUserData.payment_details?.account_number || ''} 
+                        onChange={e => setEditUserData({
+                          ...editUserData, 
+                          payment_details: { ...(editUserData.payment_details || {}), account_number: e.target.value }
+                        })} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bank Name</Label>
+                      <Input 
+                        value={editUserData.payment_details?.bank_name || ''} 
+                        onChange={e => setEditUserData({
+                          ...editUserData, 
+                          payment_details: { ...(editUserData.payment_details || {}), bank_name: e.target.value }
+                        })} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Branch</Label>
+                      <Input 
+                        value={editUserData.payment_details?.branch || ''} 
+                        onChange={e => setEditUserData({
+                          ...editUserData, 
+                          payment_details: { ...(editUserData.payment_details || {}), branch: e.target.value }
+                        })} 
+                      />
+                    </div>
+                  </div>
+                  
+                  {editUserData.assessment_fields && editUserData.assessment_fields.length > 0 && (
+                     <div className="space-y-2">
+                       <Label>Assessment Fields (Read-only)</Label>
+                       <div className="flex flex-wrap gap-1">
+                         {editUserData.assessment_fields.map((f: string, i: number) => (
+                           <Badge key={i} variant="secondary">{f}</Badge>
+                         ))}
+                       </div>
+                     </div>
+                  )}
+                </div>
+              )}
+
+              {['UNIVERSITY_COORDINATOR'].includes(editUserData.role) && (
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-muted-foreground border-b pb-1">University Details</h4>
+                  <div className="space-y-2">
+                    <Label>University</Label>
+                    <Input value={editUserData.university || ''} onChange={e => setEditUserData({...editUserData, university: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Faculty</Label>
+                    <Input value={editUserData.faculty || ''} onChange={e => setEditUserData({...editUserData, faculty: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Department</Label>
+                    <Input value={editUserData.department || ''} onChange={e => setEditUserData({...editUserData, department: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Designation</Label>
+                    <Input value={editUserData.designation || ''} onChange={e => setEditUserData({...editUserData, designation: e.target.value})} />
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewUserDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditUser} disabled={editUserLoading}>
+              {editUserLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>

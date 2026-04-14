@@ -10,7 +10,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'name', 'role', 'university', 'faculty', 'department', 'designation', 'whatsapp_number', 'phone_number')
+        fields = ('id', 'username', 'email', 'name', 'role', 'university', 'faculty', 'department', 'designation', 'whatsapp_number', 'phone_number', 'permanent_address', 'qualification', 'province', 'district', 'payment_details', 'assessment_fields', 'is_also_assessor')
         extra_kwargs = {'password': {'write_only': True}}
         
     def get_name(self, obj):
@@ -28,7 +28,7 @@ class SeminarRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = SeminarRequest
         fields = '__all__'
-        read_only_fields = ('coordinator', 'coordinator_name', 'created_at', 'status_history', 'assigned_inspector_name')
+        read_only_fields = ('coordinator', 'coordinator_name', 'created_at', 'status_history', 'assigned_inspector_name', 'university_name')
 
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:

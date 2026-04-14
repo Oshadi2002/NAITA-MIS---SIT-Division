@@ -44,7 +44,7 @@ export default function RequestDetail() {
 
   const inspectors = users.filter(u => u.role === 'INSPECTOR');
 
-  const handleAdminAction = (action: 'APPROVE' | 'REJECT' | 'NEED_CHANGES') => {
+  const handleAdminAction = async (action: 'APPROVE' | 'REJECT' | 'NEED_CHANGES') => {
     if (action === 'APPROVE') {
       if (!finalDateTime) {
         toast({ title: "Error", description: "Please select a final date and time.", variant: "destructive" });
@@ -55,22 +55,22 @@ export default function RequestDetail() {
         return;
       }
       const inspector = users.find(u => u.id === parseInt(selectedInspector));
-      setFinalDate(request.id, finalDateTime);
-      assignInspector(request.id, parseInt(selectedInspector));
-      updateRequestStatus(request.id, 'APPROVED', adminNote);
+      await setFinalDate(request.id, finalDateTime);
+      await assignInspector(request.id, parseInt(selectedInspector));
+      await updateRequestStatus(request.id, 'APPROVED', adminNote);
     } else {
-      updateRequestStatus(request.id, action === 'REJECT' ? 'REJECTED' : 'NEED_CHANGES', adminNote);
+      await updateRequestStatus(request.id, action === 'REJECT' ? 'REJECTED' : 'NEED_CHANGES', adminNote);
     }
     toast({ title: "Success", description: "Request status updated." });
   };
 
-  const handleInspectorAction = (action: 'CONFIRM' | 'NEED_CHANGES' | 'COMPLETE') => {
+  const handleInspectorAction = async (action: 'CONFIRM' | 'NEED_CHANGES' | 'COMPLETE') => {
     if (action === 'COMPLETE') {
-      completeRequest(request.id, inspectorMessage);
+      await completeRequest(request.id, inspectorMessage);
     } else if (action === 'CONFIRM') {
-      updateRequestStatus(request.id, 'INSPECTOR_CONFIRMED');
+      await updateRequestStatus(request.id, 'INSPECTOR_CONFIRMED');
     } else {
-      updateRequestStatus(request.id, 'NEED_CHANGES', inspectorMessage);
+      await updateRequestStatus(request.id, 'NEED_CHANGES', inspectorMessage);
     }
     toast({ title: "Success", description: "Action recorded successfully." });
   };

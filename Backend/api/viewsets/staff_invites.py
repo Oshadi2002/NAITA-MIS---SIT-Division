@@ -293,6 +293,52 @@ class StaffInviteViewSet(viewsets.ViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    # ─── Admin: Update Pending Staff Registration ─────────────────────────────
+    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
+    def update_staff_pending(self, request, pk=None):
+        if request.user.role != 'ADMIN':
+            return Response(
+                {'message': 'Permission denied. Only admins can update registrations.'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            pending = StaffPendingRegistration.objects.get(id=pk)
+            
+            # Simple string fields
+            fields_to_update = [
+                'full_name', 'initials_name', 'permanent_address', 
+                'phone_number', 'email', 'province', 'district', 'qualification'
+            ]
+            for field in fields_to_update:
+                if field in request.data:
+                    setattr(pending, field, request.data.get(field, '').strip())
+            
+            # JSON fields
+            if 'payment_details' in request.data:
+                pending.payment_details = request.data.get('payment_details')
+                
+            if 'assessment_fields' in request.data:
+                pending.assessment_fields = request.data.get('assessment_fields')
+
+            pending.save()
+            return Response({
+                'message': 'Staff registration updated successfully.',
+                'id': pending.id
+            }, status=status.HTTP_200_OK)
+            
+        except StaffPendingRegistration.DoesNotExist:
+            return Response(
+                {'message': 'Pending registration not found.'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error updating staff registration {pk}: {str(e)}")
+            return Response(
+                {'message': f'Error updating registration: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     # ─── Admin: Approve Pending Registration ──────────────────────────────────
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def approve_pending(self, request, pk=None):
@@ -338,6 +384,13 @@ class StaffInviteViewSet(viewsets.ViewSet):
                 first_name=first_name,
                 last_name=last_name,
                 phone_number=pending.phone_number,
+                permanent_address=pending.permanent_address,
+                qualification=pending.qualification,
+                province=pending.province,
+                district=pending.district,
+                payment_details=pending.payment_details,
+                assessment_fields=pending.assessment_fields,
+                is_also_assessor=pending.is_also_assessor
             )
         except Exception as e:
             logger.error(f"Failed to auto-create user during approval: {str(e)}")

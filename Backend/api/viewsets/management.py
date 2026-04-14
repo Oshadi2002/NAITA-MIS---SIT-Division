@@ -118,6 +118,35 @@ class ManagementViewSet(viewsets.ViewSet):
         except User.DoesNotExist:
             return Response({'message': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+    @action(detail=True, methods=['patch'])
+    def update_user(self, request, pk=None):
+        if request.user.role != 'ADMIN':
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            user = User.objects.get(id=pk)
+            
+            allowed_fields = [
+                'first_name', 'last_name', 'email', 'phone_number', 'whatsapp_number', 
+                'designation', 'university', 'faculty', 'department',
+                'permanent_address', 'qualification', 'province', 'district',
+                'payment_details', 'assessment_fields'
+            ]
+            
+            for field in allowed_fields:
+                if field in request.data:
+                    setattr(user, field, request.data[field])
+                    
+            if 'name' in request.data: # handle "name" split
+                name_parts = request.data['name'].strip().split(' ', 1)
+                user.first_name = name_parts[0]
+                user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+            
+            user.save()
+            return Response(UserSerializer(user).data)
+        except User.DoesNotExist:
+            return Response({'message': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
     @action(detail=False, methods=['put'])
     def update_profile(self, request):
         user = request.user
@@ -125,11 +154,19 @@ class ManagementViewSet(viewsets.ViewSet):
             return Response(status=status.HTTP_401_UNAUTHORIZED)
         
         # Allowed fields to update
-        allowed_fields = ['name', 'phone_number', 'whatsapp_number', 'designation', 'university', 'faculty', 'department']
+        allowed_fields = [
+            'name', 'phone_number', 'whatsapp_number', 'designation', 'university', 'faculty', 'department',
+            'permanent_address', 'qualification', 'province', 'district', 'payment_details', 'assessment_fields'
+        ]
         
         for field in allowed_fields:
             if field in request.data:
-                setattr(user, field, request.data[field])
+                if field == 'name':
+                    name_parts = request.data['name'].strip().split(' ', 1)
+                    user.first_name = name_parts[0]
+                    user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+                else:
+                    setattr(user, field, request.data[field])
         
         user.save()
         return Response(UserSerializer(user).data)
