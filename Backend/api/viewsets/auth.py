@@ -42,3 +42,8 @@ class AuthViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def user(self, request):
         return Response(UserSerializer(request.user).data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def assessors(self, request):
+        assessors = User.objects.filter(role='ASSESSOR')
+        return Response(UserSerializer(assessors, many=True).data)

@@ -101,12 +101,20 @@ class AssessmentMarkViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         data = self.request.data
         try:
+            # Determine total possible marks from panel criteria
+            assignment_id = data.get('assignment')
+            assignment = VivaAssignment.objects.get(id=assignment_id)
+            marking_criteria = assignment.panel.marking_criteria
+            total_max = sum(float(c.get('max', 0)) for c in marking_criteria) if marking_criteria else 100
+            if total_max <= 0: total_max = 100
+            
             marks_data = data.get('marks_data', {})
             total = sum(float(value) for value in marks_data.values() if value)
             condition = data.get('evaluation_condition', 'NORMAL')
             
-            # Status Logic
-            if condition == 'NORMAL' and total >= 50:
+            # Status Logic: Pass if NORMAL and total >= 50% of total possible
+            pass_threshold = total_max * 0.5
+            if condition == 'NORMAL' and total >= pass_threshold:
                 status_val = 'PASS'
             else:
                 status_val = 'SPECIAL_STATUS'
@@ -119,7 +127,7 @@ class AssessmentMarkViewSet(viewsets.ModelViewSet):
                 evaluation_condition=condition,
                 assessor_remarks=data.get('assessor_remarks', '')
             )
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, VivaAssignment.DoesNotExist):
             serializer.save(
                 assessor=self.request.user, 
                 total_mark=0, 
@@ -131,12 +139,20 @@ class AssessmentMarkViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         data = self.request.data
         try:
+            # Determine total possible marks from panel criteria
+            instance = serializer.instance
+            assignment = instance.assignment
+            marking_criteria = assignment.panel.marking_criteria
+            total_max = sum(float(c.get('max', 0)) for c in marking_criteria) if marking_criteria else 100
+            if total_max <= 0: total_max = 100
+
             marks_data = data.get('marks_data', {})
             total = sum(float(value) for value in marks_data.values() if value)
             condition = data.get('evaluation_condition', 'NORMAL')
             
-            # Status Logic
-            if condition == 'NORMAL' and total >= 50:
+            # Status Logic: Pass if NORMAL and total >= 50% of total possible
+            pass_threshold = total_max * 0.5
+            if condition == 'NORMAL' and total >= pass_threshold:
                 status_val = 'PASS'
             else:
                 status_val = 'SPECIAL_STATUS'

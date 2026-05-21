@@ -111,8 +111,13 @@ export default function AssessorDashboard() {
         }
     };
 
+    const totalMax = useMemo(() => {
+        if (!evaluatingStudent?.marking_criteria) return 100;
+        return evaluatingStudent.marking_criteria.reduce((sum: number, c: any) => sum + Number(c.max || 0), 0) || 100;
+    }, [evaluatingStudent]);
+
     const totalMark = Object.values(marksData).reduce((sum, val) => sum + Number(val || 0), 0);
-    const isPass = totalMark >= 50 && evaluationCondition === 'NORMAL';
+    const isPass = totalMark >= (totalMax * 0.5) && evaluationCondition === 'NORMAL';
 
     const submitMarks = async () => {
         if (!evaluatingStudent) return;
@@ -491,8 +496,10 @@ export default function AssessorDashboard() {
                                 <div className="pt-4 pb-2">
                                     <div className={`p-4 rounded-xl flex items-center justify-between border-2 ${isPass ? 'bg-green-50/50 border-green-200' : 'bg-red-50/50 border-red-200'}`}>
                                         <div>
-                                            <p className="text-xs uppercase font-bold text-muted-foreground mb-1">Total Score</p>
-                                            <p className={`text-4xl font-black ${isPass ? 'text-green-700' : 'text-red-700'}`}>{totalMark.toFixed(2)}</p>
+                                            <p className="text-xs uppercase font-bold text-muted-foreground mb-1">Total Score (Pass: {totalMax * 0.5})</p>
+                                            <p className={`text-4xl font-black ${isPass ? 'text-green-700' : 'text-red-700'}`}>
+                                                {totalMark.toFixed(2)} <span className="text-lg text-muted-foreground/60">/ {totalMax}</span>
+                                            </p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs uppercase font-bold text-muted-foreground mb-1">Status</p>

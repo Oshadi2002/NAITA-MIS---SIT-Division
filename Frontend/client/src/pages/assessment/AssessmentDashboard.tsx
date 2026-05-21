@@ -153,6 +153,9 @@ export default function AssessmentDashboard() {
     const [sortBy, setSortBy] = useState<'name' | 'location' | 'reg_no'>('name');
     const [openAssessorDropdown, setOpenAssessorDropdown] = useState(false);
     const [tempDate, setTempDate] = useState("");
+    const criteriaSum = useMemo(() => {
+        return newPanel.marking_criteria.reduce((sum, c) => sum + (Number(c.max) || 0), 0);
+    }, [newPanel.marking_criteria]);
 
     const uniqueUniversities = useMemo(() => Array.from(new Set(students.map(s => s.university))).filter(Boolean).sort(), [students]);
     const uniqueBatchYears = useMemo(() => Array.from(new Set(students.map(s => s.batch_year))).filter(Boolean).sort(), [students]);
@@ -262,7 +265,7 @@ export default function AssessmentDashboard() {
         if (selectedStudents.length === 0) return;
         setLoading(true);
         try {
-            await axios.post('/api/viva-assignments/bulk_assign/', {
+            await axios.post('/api/viva-panels/bulk_assign/', {
                 panel_id: panelId,
                 student_ids: selectedStudents
             });
@@ -1445,7 +1448,12 @@ export default function AssessmentDashboard() {
                         </div>
                         <div className="space-y-2 border-t pt-4 mt-2">
                             <Label className="flex justify-between items-center text-purple-800 font-bold">
-                                Marking Criteria
+                                <span>Marking Criteria</span>
+                                {criteriaSum !== 100 && (
+                                    <span className="text-[10px] text-orange-600 font-medium bg-orange-50 px-2 py-0.5 rounded border border-orange-100 flex items-center gap-1 animate-in fade-in zoom-in-95">
+                                        Total: {criteriaSum} (Recommended: 100)
+                                    </span>
+                                )}
                                 <Button 
                                     type="button" 
                                     variant="outline" 
