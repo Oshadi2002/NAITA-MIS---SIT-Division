@@ -52,9 +52,9 @@ class VivaPanelViewSet(viewsets.ModelViewSet):
         for i, student_id in enumerate(student_ids):
             try:
                 student = StudentSubmission.objects.get(id=student_id)
-                # Check if already assigned
-                if VivaAssignment.objects.filter(student=student).exists():
-                    errors.append(f"Student {student.initials_name} is already assigned to a panel.")
+                # Check if already assigned for this specific phase
+                if VivaAssignment.objects.filter(student=student, panel__training_phase=panel.training_phase).exists():
+                    errors.append(f"Student {student.initials_name} is already assigned to a {panel.get_training_phase_display()} panel.")
                     continue
                 
                 assignment = VivaAssignment.objects.create(

@@ -1,6 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import {
   LayoutDashboard,
   FileText,
@@ -17,9 +19,22 @@ export function Sidebar() {
   const [location] = useLocation();
   const { currentUser, logout } = useStore();
 
+  const { data: novationRequests } = useQuery({
+    queryKey: ['novation-requests'],
+    queryFn: async () => {
+      const res = await axios.get('/api/novation-requests/');
+      return res.data;
+    },
+    enabled: currentUser?.role === 'ADMIN' || currentUser?.role === 'UNIVERSITY_COORDINATOR'
+  });
+
+  const unreadNovationCount = currentUser?.role === 'ADMIN' 
+    ? novationRequests?.filter((r: any) => !r.is_read_by_admin && r.status === 'PENDING').length 
+    : 0;
+
   if (!currentUser) return null;
 
-  const NavItem = ({ href, icon: Icon, label }: { href: string; icon: any; label: string }) => {
+  const NavItem = ({ href, icon: Icon, label, badgeCount }: { href: string; icon: any; label: string; badgeCount?: number }) => {
     const isActive = location === href;
     return (
       <Link href={href}>
@@ -33,7 +48,12 @@ export function Sidebar() {
           )}
         >
           <Icon className="h-4 w-4" />
-          {label}
+          <span className="flex-1 text-left">{label}</span>
+          {badgeCount ? (
+            <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto">
+              {badgeCount}
+            </span>
+          ) : null}
         </Button>
       </Link>
     );
@@ -66,6 +86,7 @@ export function Sidebar() {
           <>
             <NavItem href="/requests" icon={ClipboardCheck} label="All Requests" />
             <NavItem href="/student-data" icon={Users} label="Student Data" />
+            <NavItem href="/info-change-requests" icon={Users} label="Novation Requests" badgeCount={unreadNovationCount} />
             <NavItem href="/users" icon={Users} label="User Management" />
             <NavItem href="/assessment" icon={Microscope} label="Assessment Management" />
           </>

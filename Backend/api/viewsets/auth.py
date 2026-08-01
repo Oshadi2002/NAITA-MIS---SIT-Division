@@ -15,7 +15,8 @@ class AuthViewSet(viewsets.ViewSet):
         try:
             username = request.data.get('username')
             password = request.data.get('password')
-            print(f"DEBUG: Login attempt - username: {username}")
+            requested_role = request.data.get('role')
+            print(f"DEBUG: Login attempt - username: {username}, role: {requested_role}")
             
             user = authenticate(username=username, password=password)
             if not user:
@@ -24,6 +25,10 @@ class AuthViewSet(viewsets.ViewSet):
                     user = authenticate(username=user_obj.username, password=password)
 
             if user:
+                if requested_role and user.role != requested_role:
+                    print(f"DEBUG: Role mismatch - expected: {requested_role}, got: {user.role}")
+                    return Response({'message': 'Please select the correct login tab for your role!'}, status=status.HTTP_403_FORBIDDEN)
+                
                 print(f"DEBUG: Authentication successful - user: {user.username}")
                 auth_login(request, user)
                 return Response(UserSerializer(user).data)

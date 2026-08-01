@@ -9,6 +9,8 @@ from ..serializers import FormLinkSerializer, StudentSubmissionSerializer
 from .base import CsrfExemptSessionAuthentication
 from django.utils import timezone
 from django.db import IntegrityError
+from django.core.exceptions import ValidationError
+from django.db.models import Q
 from api.utils.pdf_generator import generate_placement_letter, edit_agreement_pdf
 
 class FormLinkViewSet(viewsets.ModelViewSet):
@@ -44,7 +46,8 @@ class FormLinkViewSet(viewsets.ModelViewSet):
                 'valid': True, 
                 'university': link.university,
                 'subject': link.subject,
-                'batch_year': link.batch_year
+                'batch_year': link.batch_year,
+                'number_of_trainings': link.number_of_trainings
             })
         except FormLink.objects.DoesNotExist:
             return Response({'valid': False}, status=status.HTTP_404_NOT_FOUND)
@@ -148,7 +151,7 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-        except FormLink.DoesNotExist:
+        except (FormLink.DoesNotExist, ValidationError):
              # If Admin, allow proceed without link if data is provided manually
              if request.user.role == 'ADMIN' and not hash_id:
                   # Manual create path
@@ -197,6 +200,54 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             # Data should already be in validated_data from request
             # But we might need to ensure they are set if not in model default (they are CharFields)
             serializer.save()
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
+    def check_nic(self, request):
+        nic = request.data.get('nic')
+        hash_id = request.data.get('form_link_id')
+        
+        if not nic or not hash_id:
+            return Response({'detail': 'NIC and form link ID are required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            link = FormLink.objects.get(id=hash_id, is_active=True)
+            submission = StudentSubmission.objects.filter(nic=nic, form_link=link).first()
+            
+            if submission:
+                return Response({
+                    'exists': True,
+                    'student': {
+                        'id': submission.id,
+                        'full_name': submission.full_name,
+                        'student_reg_no': submission.student_reg_no,
+                        'nic': submission.nic,
+                    }
+                })
+            else:
+                return Response({'exists': False})
+        except FormLink.DoesNotExist:
+            return Response({'detail': 'Invalid Link'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['patch'], permission_classes=[permissions.AllowAny])
+    def submit_phase2(self, request, pk=None):
+        try:
+            submission = self.get_object()
+            
+            # Use serializer for validation, but only allow partial updates to Phase 2 fields
+            serializer = self.get_serializer(submission, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            
+            # Save the phase 2 specific data
+            serializer.save(
+                has_phase2_placement=True,
+                checked_ok=False, # Reset verification status
+            )
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'])
     def export_excel(self, request):
@@ -518,3 +569,40 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = 'attachment; filename="placement_letters.zip"'
         
         return response
+
+    @action(detail=False, methods=['post'], url_path='generate-reg-numbers')
+    def generate_reg_numbers(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"detail": "Only administrators can generate registration numbers."}, status=status.HTTP_403_FORBIDDEN)
+        
+        prefix = request.data.get('pattern')
+        if not prefix:
+            return Response({"detail": "Number pattern (prefix) is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get all students who are checked_ok=True and admin_reg_number is empty/null
+        students_to_update = StudentSubmission.objects.filter(
+            checked_ok=True
+        ).filter(
+            Q(admin_reg_number__isnull=True) | Q(admin_reg_number='')
+        ).order_by('submitted_at')
+        
+        # Find the max number currently used for this prefix
+        existing = StudentSubmission.objects.filter(admin_reg_number__startswith=prefix)
+        max_num = 0
+        for s in existing:
+            try:
+                num_str = s.admin_reg_number.replace(prefix, '')
+                num = int(num_str)
+                if num > max_num:
+                    max_num = num
+            except ValueError:
+                pass
+                
+        count = 0
+        for student in students_to_update:
+            max_num += 1
+            student.admin_reg_number = f"{prefix}{max_num:03d}"
+            student.save(update_fields=['admin_reg_number'])
+            count += 1
+            
+        return Response({"success": True, "message": f"Generated {count} registration numbers."})

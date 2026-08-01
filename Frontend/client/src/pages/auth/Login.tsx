@@ -16,9 +16,9 @@ export default function Login() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (username: string, password = "password") => {
+  const handleLogin = async (username: string, password = "password", requestedRole?: string) => {
     setLoading(true);
-    const success = await login({ username, password });
+    const success = await login({ username, password, role: requestedRole } as any);
     if (success) {
       toast({
         title: "Welcome back",
@@ -26,10 +26,18 @@ export default function Login() {
       });
       setLocation("/");
     } else {
+      const errorMsg = useStore.getState().error || "";
+      let displayMessage = "Incorrect Email or Password! Try again.";
+      if (errorMsg.includes("Please select the correct login tab")) {
+          displayMessage = "Please select the correct login tab for your role!";
+      } else if (errorMsg.includes("Incorrect Email or Password")) {
+          displayMessage = "Incorrect Email or Password! Try again.";
+      }
+      
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: "Incorrect Email or Password! Try again.",
+        description: displayMessage,
       });
     }
     setLoading(false);
@@ -71,6 +79,7 @@ export default function Login() {
             <TabsContent value="admin">
               <LoginForm
                 role="System Administrator"
+                backendRole="ADMIN"
                 icon={<ShieldCheck className="w-5 h-5 text-primary" />}
                 defaultEmail="admin@system.com"
                 onSubmit={handleLogin}
@@ -81,6 +90,7 @@ export default function Login() {
             <TabsContent value="coordinator">
               <LoginForm
                 role="University Coordinator"
+                backendRole="UNIVERSITY_COORDINATOR"
                 icon={<GraduationCap className="w-5 h-5 text-primary" />}
                 defaultEmail="colombo@uni.com"
                 onSubmit={handleLogin}
@@ -91,6 +101,7 @@ export default function Login() {
             <TabsContent value="inspector">
               <LoginForm
                 role="District Inspector"
+                backendRole="INSPECTOR"
                 icon={<MapPin className="w-5 h-5 text-primary" />}
                 defaultEmail="john@inspector.com"
                 onSubmit={handleLogin}
@@ -101,6 +112,7 @@ export default function Login() {
             <TabsContent value="assessor">
               <LoginForm
                 role="Viva Assessor"
+                backendRole="ASSESSOR"
                 icon={<Microscope className="w-5 h-5 text-primary" />}
                 defaultEmail="john@assessor.com"
                 onSubmit={handleLogin}
@@ -153,7 +165,7 @@ export default function Login() {
   );
 }
 
-function LoginForm({ role, icon, defaultEmail, onSubmit, loading }: { role: string, icon: React.ReactNode, defaultEmail: string, onSubmit: (username: string, password?: string) => void, loading: boolean }) {
+function LoginForm({ role, backendRole, icon, defaultEmail, onSubmit, loading }: { role: string, backendRole: string, icon: React.ReactNode, defaultEmail: string, onSubmit: (username: string, password?: string, requestedRole?: string) => void, loading: boolean }) {
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState("password");
 
@@ -210,7 +222,7 @@ function LoginForm({ role, icon, defaultEmail, onSubmit, loading }: { role: stri
         </div>
         <Button
           className="h-12 px-8 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20 transition-all hover:-translate-y-1 active:translate-y-0"
-          onClick={() => onSubmit(email, password)}
+          onClick={() => onSubmit(email, password, backendRole)}
           disabled={loading}
           data-testid="button-submit"
         >

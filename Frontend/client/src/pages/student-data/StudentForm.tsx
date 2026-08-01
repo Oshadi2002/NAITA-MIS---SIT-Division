@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, CheckCircle2, AlertCircle, UploadCloud } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, UploadCloud, Search } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -50,10 +50,19 @@ const studentFormSchema = z.object({
     head_office_email: z.string().email("Invalid email").optional().or(z.literal('')),
     head_office_phone: z.string().optional(),
     officer_in_charge_contact: z.string().optional(),
+});
 
-    // Files
-    // For file inputs, we'll handle them manually or use a refined schema if using a wrapper
-    // We'll treat them as required in the UI logic
+const phase2Schema = z.object({
+    phase2_training_establishment: z.string().min(2, "Establishment Name is required"),
+    phase2_training_address: z.string().min(5, "Training Address is required"),
+    phase2_training_district: z.string().min(2, "District is required"),
+    phase2_divisional_secretariat: z.string().min(2, "Secretariat is required"),
+    phase2_officer_in_charge: z.string().min(2, "OIC Name is required"),
+    phase2_officer_in_charge_contact: z.string().min(9, "Contact is required"),
+    phase2_training_start_date: z.string().min(1, "Start Date is required"),
+    phase2_training_end_date: z.string().min(1, "End Date is required"),
+    phase2_training_duration: z.string().min(1, "Duration is required"),
+    phase2_field_of_training: z.string().min(2, "Field of Training is required"),
 });
 
 export default function StudentForm() {
@@ -62,11 +71,23 @@ export default function StudentForm() {
     const [submitting, setSubmitting] = useState(false);
     const [validLink, setValidLink] = useState(false);
     const [linkData, setLinkData] = useState<any>(null);
+    
+    // Phase Support
+    const [selectedPhase, setSelectedPhase] = useState<1 | 2>(1);
+    const [phaseSelectionDone, setPhaseSelectionDone] = useState(false);
+    const [nicCheck, setNicCheck] = useState("");
+    const [checkingNic, setCheckingNic] = useState(false);
+    const [phase2StudentId, setPhase2StudentId] = useState<number | null>(null);
+
     const [files, setFiles] = useState<{ [key: string]: File | null }>({
         nic_copy: null,
         agreement_form: null,
         work_site_form: null,
         placement_letter: null,
+        
+        phase2_work_site_form: null,
+        phase2_agreement_form: null,
+        phase2_placement_letter: null,
     });
     const { toast } = useToast();
     const [, setLocation] = useLocation();
@@ -75,7 +96,14 @@ export default function StudentForm() {
         resolver: zodResolver(studentFormSchema),
         defaultValues: {
             gender: "",
-            training_duration: "6 Months", // Default
+            training_duration: "6 Months",
+        },
+    });
+
+    const phase2Form = useForm<z.infer<typeof phase2Schema>>({
+        resolver: zodResolver(phase2Schema),
+        defaultValues: {
+            phase2_training_duration: "6 Months",
         },
     });
 
@@ -87,6 +115,10 @@ export default function StudentForm() {
                     if (res.data.valid) {
                         setValidLink(true);
                         setLinkData(res.data);
+                        if (res.data.number_of_trainings <= 1) {
+                            setPhaseSelectionDone(true);
+                            setSelectedPhase(1);
+                        }
                     } else {
                         setValidLink(false);
                     }
@@ -105,8 +137,36 @@ export default function StudentForm() {
         }
     };
 
-    const onSubmit = async (values: z.infer<typeof studentFormSchema>) => {
-        // Validate Files
+    const handleCheckNic = async () => {
+        if (!nicCheck) return;
+        setCheckingNic(true);
+        try {
+            const res = await axios.post('/api/student-submissions/check_nic/', {
+                nic: nicCheck,
+                form_link_id: params!.hash
+            });
+            if (res.data.exists) {
+                setPhase2StudentId(res.data.student.id);
+                setPhaseSelectionDone(true);
+            } else {
+                toast({
+                    title: "Student Not Found",
+                    description: "No Phase 1 submission found for this NIC in this batch.",
+                    variant: "destructive"
+                });
+            }
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to verify NIC. Please try again.",
+                variant: "destructive"
+            });
+        } finally {
+            setCheckingNic(false);
+        }
+    };
+
+    const onSubmitPhase1 = async (values: z.infer<typeof studentFormSchema>) => {
         const requiredFiles = ['nic_copy', 'agreement_form', 'work_site_form', 'placement_letter'];
         const missingFiles = requiredFiles.filter(f => !files[f]);
 
@@ -121,34 +181,53 @@ export default function StudentForm() {
 
         setSubmitting(true);
         const formData = new FormData();
-        // Append JSON fields
         Object.entries(values).forEach(([key, value]) => formData.append(key, value));
-
-        // Append Link Data
         formData.append('form_link_id', params!.hash);
 
-        // Append Files
         Object.entries(files).forEach(([key, file]) => {
             if (file) formData.append(key, file);
         });
 
         try {
             await axios.post('/api/student-submissions/', formData);
-            toast({
-                title: "Submission Successful!",
-                description: "Your data has been recorded. You can now download your receipt.",
-                variant: "default", // Success green
-            });
-            // Redirect or Show Success State
-            // For now, simpler to Replace the View
-            setValidLink(false); // Hide form
-            setLinkData({ ...linkData, submitted: true }); // Hack to show success
+            toast({ title: "Submission Successful!", description: "Your data has been recorded.", variant: "default" });
+            setValidLink(false); 
+            setLinkData({ ...linkData, submitted: true });
         } catch (error: any) {
+            toast({ title: "Submission Failed", description: error.response?.data?.detail || "An error occurred.", variant: "destructive" });
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const onSubmitPhase2 = async (values: z.infer<typeof phase2Schema>) => {
+        const requiredFiles = ['phase2_agreement_form', 'phase2_work_site_form', 'phase2_placement_letter'];
+        const missingFiles = requiredFiles.filter(f => !files[f]);
+
+        if (missingFiles.length > 0) {
             toast({
-                title: "Submission Failed",
-                description: error.response?.data?.detail || "An error occurred. Please try again.",
+                title: "Missing Files",
+                description: `Please upload all required documents.`,
                 variant: "destructive",
             });
+            return;
+        }
+
+        setSubmitting(true);
+        const formData = new FormData();
+        Object.entries(values).forEach(([key, value]) => formData.append(key, value));
+        
+        requiredFiles.forEach(f => {
+            if (files[f]) formData.append(f, files[f]!);
+        });
+
+        try {
+            await axios.patch(`/api/student-submissions/${phase2StudentId}/submit_phase2/`, formData);
+            toast({ title: "Submission Successful!", description: "Phase 2 training details recorded.", variant: "default" });
+            setValidLink(false); 
+            setLinkData({ ...linkData, submitted: true });
+        } catch (error: any) {
+            toast({ title: "Submission Failed", description: error.response?.data?.detail || "An error occurred.", variant: "destructive" });
         } finally {
             setSubmitting(false);
         }
@@ -160,8 +239,8 @@ export default function StudentForm() {
 
     if (linkData?.submitted) {
         return (
-            <div className="container max-w-lg mx-auto py-12 text-center space-y-4">
-                <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+            <div className="container max-w-lg mx-auto py-12 text-center space-y-4 animate-in fade-in zoom-in">
+                <CheckCircle2 className="h-20 w-20 text-green-500 mx-auto" />
                 <h1 className="text-3xl font-bold">Submission Received!</h1>
                 <p className="text-muted-foreground">Thank you. Your details have been securely recorded.</p>
                 <Button onClick={() => window.print()} variant="outline" className="mt-4">Download Receipt (Print)</Button>
@@ -179,18 +258,86 @@ export default function StudentForm() {
         );
     }
 
+    // Phase Selection View
+    if (!phaseSelectionDone) {
+        return (
+            <div className="min-h-screen bg-slate-50 py-12 px-4 flex justify-center items-start">
+                <Card className="max-w-md w-full shadow-lg">
+                    <CardHeader className="text-center">
+                        <CardTitle className="text-2xl text-primary">Training Submission</CardTitle>
+                        <CardDescription>This program requires two training phases.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                            <Button 
+                                variant={selectedPhase === 1 ? "default" : "outline"} 
+                                className="h-24 flex-col gap-2"
+                                onClick={() => setSelectedPhase(1)}
+                            >
+                                <span className="text-xl font-bold">Phase 1</span>
+                                <span className="text-xs opacity-80 font-normal">First Placement</span>
+                            </Button>
+                            <Button 
+                                variant={selectedPhase === 2 ? "default" : "outline"} 
+                                className="h-24 flex-col gap-2"
+                                onClick={() => setSelectedPhase(2)}
+                            >
+                                <span className="text-xl font-bold">Phase 2</span>
+                                <span className="text-xs opacity-80 font-normal">Second Placement</span>
+                            </Button>
+                        </div>
+                        
+                        {selectedPhase === 1 && (
+                            <div className="pt-4 text-center">
+                                <Button className="w-full" onClick={() => setPhaseSelectionDone(true)}>Continue to Phase 1 Form</Button>
+                            </div>
+                        )}
+
+                        {selectedPhase === 2 && (
+                            <div className="pt-4 space-y-4 border-t">
+                                <p className="text-sm text-muted-foreground text-center">Please enter your NIC to locate your Phase 1 record.</p>
+                                <div className="space-y-2">
+                                    <Input 
+                                        placeholder="Enter NIC Number" 
+                                        value={nicCheck} 
+                                        onChange={(e) => setNicCheck(e.target.value)} 
+                                    />
+                                    <Button className="w-full" onClick={handleCheckNic} disabled={checkingNic || !nicCheck}>
+                                        {checkingNic ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                                        Find My Record
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 py-8 px-4">
             <div className="max-w-3xl mx-auto space-y-6">
                 <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-bold text-primary">Student Placement Data Collection</h1>
-                    <p className="text-muted-foreground">Please fill out all details accurately. Block letters required for Full Name.</p>
+                    <h1 className="text-3xl font-bold text-primary">
+                        {selectedPhase === 1 ? "Student Placement Data Collection" : "Phase 2 Training Details"}
+                    </h1>
+                    <p className="text-muted-foreground">Please fill out all details accurately.</p>
                 </div>
 
                 <Card className="border-t-4 border-t-primary shadow-lg">
                     <CardHeader className="bg-muted/20">
-                        <CardTitle>Context Information</CardTitle>
-                        <CardDescription>These details are automatically captured from your link.</CardDescription>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle>Context Information</CardTitle>
+                                <CardDescription>These details are automatically captured from your link.</CardDescription>
+                            </div>
+                            {linkData.number_of_trainings > 1 && (
+                                <div className="px-3 py-1 bg-primary/10 text-primary rounded-full font-semibold text-sm">
+                                    Phase {selectedPhase} of 2
+                                </div>
+                            )}
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
                             <div className="p-3 bg-white rounded border">
                                 <span className="text-xs font-semibold text-muted-foreground uppercase">University</span>
@@ -207,9 +354,11 @@ export default function StudentForm() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-6">
+                        
+                        {/* PHASE 1 FORM */}
+                        {selectedPhase === 1 && (
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-
+                            <form onSubmit={form.handleSubmit(onSubmitPhase1)} className="space-y-8">
                                 {/* Personal Information */}
                                 <div className="space-y-4">
                                     <h3 className="text-lg font-semibold flex items-center gap-2"><div className="w-1 h-6 bg-primary rounded-full" /> Personal Information</h3>
@@ -445,41 +594,125 @@ export default function StudentForm() {
                                         <AlertDescription>Please upload clear PDF or Image files for the following documents.</AlertDescription>
                                     </Alert>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <FileUploadField
-                                            label="NIC Copy (Both Sides)"
-                                            name="nic_copy"
-                                            file={files.nic_copy}
-                                            onChange={handleFileChange}
-                                        />
-                                        <FileUploadField
-                                            label="NAITA Training Contract Form"
-                                            name="agreement_form"
-                                            file={files.agreement_form}
-                                            onChange={handleFileChange}
-                                        />
-                                        <FileUploadField
-                                            label="NAITA Training Work Site Form"
-                                            name="work_site_form"
-                                            file={files.work_site_form}
-                                            onChange={handleFileChange}
-                                        />
-                                        <FileUploadField
-                                            label="NAITA Placement Letter"
-                                            name="placement_letter"
-                                            file={files.placement_letter}
-                                            onChange={handleFileChange}
-                                        />
+                                        <FileUploadField label="NIC Copy (Both Sides)" name="nic_copy" file={files.nic_copy} onChange={handleFileChange} />
+                                        <FileUploadField label="NAITA Training Contract Form" name="agreement_form" file={files.agreement_form} onChange={handleFileChange} />
+                                        <FileUploadField label="NAITA Training Work Site Form" name="work_site_form" file={files.work_site_form} onChange={handleFileChange} />
+                                        <FileUploadField label="NAITA Placement Letter" name="placement_letter" file={files.placement_letter} onChange={handleFileChange} />
                                     </div>
                                 </div>
 
                                 <CardFooter className="px-0 pt-6">
                                     <Button type="submit" size="lg" className="w-full text-lg" disabled={submitting}>
                                         {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        {submitting ? 'Submitting...' : 'Submit Student Data'}
+                                        {submitting ? 'Submitting...' : 'Submit Phase 1 Details'}
                                     </Button>
                                 </CardFooter>
                             </form>
                         </Form>
+                        )}
+
+
+                        {/* PHASE 2 FORM */}
+                        {selectedPhase === 2 && (
+                        <Form {...phase2Form}>
+                            <form onSubmit={phase2Form.handleSubmit(onSubmitPhase2)} className="space-y-8">
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2"><div className="w-1 h-6 bg-primary rounded-full" /> Phase 2 Training Details</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField control={phase2Form.control} name="phase2_training_establishment" render={({ field }) => (
+                                            <FormItem className="col-span-2">
+                                                <FormLabel>Training Establishment Name</FormLabel>
+                                                <FormControl><Input placeholder="Company / Organization Name" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={phase2Form.control} name="phase2_training_address" render={({ field }) => (
+                                            <FormItem className="col-span-2">
+                                                <FormLabel>Training Address</FormLabel>
+                                                <FormControl><Textarea placeholder="Location of training" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={phase2Form.control} name="phase2_training_district" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Training District</FormLabel>
+                                                <FormControl><Input placeholder="District" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={phase2Form.control} name="phase2_divisional_secretariat" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Divisional Secretariat</FormLabel>
+                                                <FormControl><Input placeholder="Secretariat Division" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={phase2Form.control} name="phase2_officer_in_charge" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Officer In Charge (OIC)</FormLabel>
+                                                <FormControl><Input placeholder="Supervisor Name" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={phase2Form.control} name="phase2_officer_in_charge_contact" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>OIC Contact Number</FormLabel>
+                                                <FormControl><Input placeholder="Phone Number" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={phase2Form.control} name="phase2_field_of_training" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Field of Training</FormLabel>
+                                                <FormControl><Input placeholder="e.g. Software Engineering" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={phase2Form.control} name="phase2_training_duration" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Duration</FormLabel>
+                                                <FormControl><Input placeholder="e.g. 6 Months" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={phase2Form.control} name="phase2_training_start_date" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Start Date</FormLabel>
+                                                <FormControl><Input type="date" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={phase2Form.control} name="phase2_training_end_date" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>End Date</FormLabel>
+                                                <FormControl><Input type="date" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Phase 2 File Uploads */}
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2"><div className="w-1 h-6 bg-primary rounded-full" /> Phase 2 Document Uploads</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <FileUploadField label="Phase 2 Contract Form" name="phase2_agreement_form" file={files.phase2_agreement_form} onChange={handleFileChange} />
+                                        <FileUploadField label="Phase 2 Work Site Form" name="phase2_work_site_form" file={files.phase2_work_site_form} onChange={handleFileChange} />
+                                        <FileUploadField label="Phase 2 Placement Letter" name="phase2_placement_letter" file={files.phase2_placement_letter} onChange={handleFileChange} />
+                                    </div>
+                                </div>
+
+                                <CardFooter className="px-0 pt-6">
+                                    <Button type="submit" size="lg" className="w-full text-lg" disabled={submitting}>
+                                        {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {submitting ? 'Submitting...' : 'Submit Phase 2 Details'}
+                                    </Button>
+                                </CardFooter>
+                            </form>
+                        </Form>
+                        )}
                     </CardContent>
                 </Card>
             </div>

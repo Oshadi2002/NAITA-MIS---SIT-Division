@@ -45,7 +45,7 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentSubmission
         fields = '__all__'
-        read_only_fields = ('form_link', 'submitted_at', 'university', 'subject', 'batch_year', 'district', 'checked_ok', 'admin_reg_number')
+        read_only_fields = ('form_link', 'submitted_at', 'university', 'subject', 'batch_year', 'district', 'received_approval_for_resubmission')
 
     def validate(self, data):
         # Additional validation can go here
@@ -58,7 +58,7 @@ class NovationRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = NovationRequest
         fields = '__all__'
-        read_only_fields = ('coordinator', 'created_at', 'updated_at', 'status', 'admin_comment')
+        read_only_fields = ('coordinator', 'created_at', 'updated_at', 'status', 'is_read_by_admin')
 
 class DataEditRequestSerializer(serializers.ModelSerializer):
     requested_by_name = serializers.ReadOnlyField(source='requested_by.get_full_name')

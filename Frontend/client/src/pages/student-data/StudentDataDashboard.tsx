@@ -71,10 +71,107 @@ interface StudentSubmission {
     finalized_agreement_form: string | null;
     is_agreement_sent: boolean;
     agreement_sent_at: string | null;
+    has_second_placement: boolean;
+    second_training_establishment: string | null;
+    second_training_address: string | null;
+    second_training_district: string | null;
+    second_divisional_secretariat: string | null;
+    second_officer_in_charge: string | null;
+    second_officer_in_charge_contact: string | null;
+    second_training_start_date: string | null;
+    second_training_end_date: string | null;
+    second_training_duration: string | null;
+    second_field_of_training: string | null;
+    second_placement_form: string | null;
+    
+    has_phase2_placement: boolean;
+    phase2_training_establishment: string | null;
+    phase2_training_address: string | null;
+    phase2_training_district: string | null;
+    phase2_divisional_secretariat: string | null;
+    phase2_officer_in_charge: string | null;
+    phase2_officer_in_charge_contact: string | null;
+    phase2_training_start_date: string | null;
+    phase2_training_end_date: string | null;
+    phase2_training_duration: string | null;
+    phase2_field_of_training: string | null;
+    phase2_work_site_form: string | null;
+    phase2_agreement_form: string | null;
+    phase2_placement_letter: string | null;
+
+    has_phase2_second_placement: boolean;
+    phase2_second_training_establishment: string | null;
+    phase2_second_training_address: string | null;
+    phase2_second_training_district: string | null;
+    phase2_second_divisional_secretariat: string | null;
+    phase2_second_officer_in_charge: string | null;
+    phase2_second_officer_in_charge_contact: string | null;
+    phase2_second_training_start_date: string | null;
+    phase2_second_training_end_date: string | null;
+    phase2_second_training_duration: string | null;
+    phase2_second_field_of_training: string | null;
+    phase2_second_placement_form: string | null;
 }
 
 // Navigation Levels
 type NavLevel = 'years' | 'universities' | 'districts' | 'subjects' | 'list';
+
+function GenerateRegNumbersDialog({ onGenerated }: { onGenerated: () => void }) {
+    const [open, setOpen] = useState(false);
+    const [pattern, setPattern] = useState("");
+    const [loading, setLoading] = useState(false);
+    const { toast } = useToast();
+
+    const handleGenerate = async () => {
+        if (!pattern.trim()) return toast({ title: "Pattern required", variant: "destructive" });
+        setLoading(true);
+        try {
+            const res = await axios.post('/api/student-submissions/generate-reg-numbers/', { pattern: pattern.trim() });
+            toast({ title: "Success", description: res.data.message });
+            setOpen(false);
+            setPattern("");
+            onGenerated();
+        } catch (error: any) {
+            toast({ title: "Error", description: error.response?.data?.detail || "Failed to generate numbers.", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="secondary" className="gap-2 border shadow-sm">
+                    Generate Reg. Numbers
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Generate Registration Numbers</DialogTitle>
+                    <DialogDescription>
+                        Provide a pattern prefix (e.g. SIT/2024/). 
+                        Numbers will be sequentially generated (e.g. 001, 002) and assigned to verified students who don't have one yet.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label>Number Pattern Prefix</Label>
+                    <Input 
+                        placeholder="SIT/2024/" 
+                        value={pattern} 
+                        onChange={(e) => setPattern(e.target.value)} 
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button onClick={handleGenerate} disabled={loading || !pattern.trim()}>
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Generate
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export default function StudentDataDashboard() {
     const { currentUser } = useStore();
@@ -156,6 +253,7 @@ export default function StudentDataDashboard() {
         if (currentUser?.role !== 'ADMIN') return;
         try {
             await axios.patch(`/api/student-submissions/${student.id}/`, { admin_reg_number: val });
+            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, admin_reg_number: val } : s));
             toast({ title: "Reg No Updated" });
         } catch (error) {
             toast({ title: "Update Failed", variant: "destructive" });
@@ -367,7 +465,14 @@ export default function StudentDataDashboard() {
                             {displayStudents.map(student => (
                                 <TableRow key={student.id} className={student.is_agreement_sent ? "bg-green-50/50" : ""}>
                                     <TableCell>
-                                        <div className="font-medium">{student.full_name}</div>
+                                        <div className="font-medium flex items-center gap-2">
+                                            {student.full_name}
+                                            {student.admin_reg_number && (
+                                                <Badge variant="outline" className="text-[10px] h-5 bg-blue-50 text-blue-700 border-blue-200 font-mono">
+                                                    {student.admin_reg_number}
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <div className="text-xs text-muted-foreground">{student.nic} | {student.student_reg_no}</div>
                                     </TableCell>
                                     <TableCell>
@@ -576,6 +681,7 @@ export default function StudentDataDashboard() {
                 )}
                 {activeTab === 'students' && currentUser?.role === 'ADMIN' && (
                     <div className="flex gap-2">
+                        <GenerateRegNumbersDialog onGenerated={fetchData} />
                         <CreateStudentDialog onCreated={fetchData} />
                     </div>
                 )}
@@ -644,8 +750,15 @@ export default function StudentDataDashboard() {
                                                                 <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
                                                                     <GraduationCap className="w-5 h-5 text-primary" />
                                                                 </div>
-                                                                <div>
-                                                                    <p className="font-bold text-sm leading-tight">{student.full_name}</p>
+                                                                 <div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <p className="font-bold text-sm leading-tight">{student.full_name}</p>
+                                                                        {student.admin_reg_number && (
+                                                                            <Badge variant="outline" className="text-[9px] h-4 bg-blue-50 text-blue-700 border-blue-200 font-mono py-0">
+                                                                                {student.admin_reg_number}
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
                                                                     <p className="text-xs text-muted-foreground font-mono">{student.student_reg_no}</p>
                                                                 </div>
                                                             </div>
@@ -830,6 +943,7 @@ export default function StudentDataDashboard() {
                                 student={editingStudent}
                                 open={!!editingStudent}
                                 onOpenChange={(open) => !open && setEditingStudent(null)}
+                                toggleChecked={toggleChecked}
                                 onSuccess={() => {
                                     setEditingStudent(null);
                                     fetchData();
@@ -863,6 +977,7 @@ export default function StudentDataDashboard() {
                         student={globalSearchPreviewStudent}
                         open={!!globalSearchPreviewStudent}
                         onOpenChange={(open) => !open && setGlobalSearchPreviewStudent(null)}
+                        toggleChecked={toggleChecked}
                         onSuccess={() => {
                             setGlobalSearchPreviewStudent(null);
                             fetchData();
@@ -874,7 +989,7 @@ export default function StudentDataDashboard() {
     );
 }
 
-function EditStudentDialog({ student, open, onOpenChange, onSuccess }: { student: StudentSubmission | null, open: boolean, onOpenChange: (open: boolean) => void, onSuccess: () => void }) {
+function EditStudentDialog({ student, open, onOpenChange, toggleChecked, onSuccess }: { student: StudentSubmission | null, open: boolean, onOpenChange: (open: boolean) => void, toggleChecked: (s: StudentSubmission) => void, onSuccess: () => void }) {
     const { currentUser } = useStore();
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
@@ -889,7 +1004,14 @@ function EditStudentDialog({ student, open, onOpenChange, onSuccess }: { student
 
         setLoading(true);
         const formData = new FormData(e.currentTarget);
-        const data = Object.fromEntries(formData.entries());
+        const data: Record<string, any> = Object.fromEntries(formData.entries());
+
+        // Nullify empty strings to prevent Django validation errors (e.g., for DateFields)
+        Object.keys(data).forEach(key => {
+            if (data[key] === "") {
+                data[key] = null;
+            }
+        });
 
         try {
             await axios.patch(`/api/student-submissions/${student.id}/`, data);
@@ -947,6 +1069,29 @@ function EditStudentDialog({ student, open, onOpenChange, onSuccess }: { student
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={onSubmit} className="space-y-6">
+                    {/* Verification Status */}
+                    <div className="p-4 rounded-xl border bg-muted/30 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${student.checked_ok ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                                {student.checked_ok ? <CheckCircle2 className="w-6 h-6" /> : <XCircle className="w-6 h-6" />}
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold">{student.checked_ok ? 'Verified Record' : 'Pending Verification'}</p>
+                                <p className="text-xs text-muted-foreground">Admin Registration: <span className="font-mono font-bold text-foreground">{student.admin_reg_number || 'Not Assigned'}</span></p>
+                            </div>
+                        </div>
+                        {isAdmin && (
+                            <Button 
+                                type="button" 
+                                variant={student.checked_ok ? "outline" : "default"} 
+                                size="sm"
+                                onClick={() => toggleChecked(student)}
+                            >
+                                {student.checked_ok ? 'Mark Pending' : 'Mark Verified'}
+                            </Button>
+                        )}
+                    </div>
+
                     {/* Personal Information */}
                     <div className="space-y-4">
                         <Label className="text-base font-semibold flex items-center gap-2"><div className="w-1 h-5 bg-primary rounded-full" /> Personal Information</Label>
@@ -1114,6 +1259,183 @@ function EditStudentDialog({ student, open, onOpenChange, onSuccess }: { student
                         </div>
                     )}
 
+                    {/* Second Training Details (Novation) */}
+                    {student.has_second_placement && (
+                        <div className="border-t pt-4 space-y-4 bg-blue-50/30 p-4 rounded-xl border-blue-100">
+                            <Label className="text-base font-bold flex items-center gap-2 text-blue-800">
+                                <div className="w-1.5 h-5 bg-blue-600 rounded-full" /> Second Training Placement (Novation)
+                            </Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2 col-span-2">
+                                    <Label>New Training Establishment Name</Label>
+                                    <Input name="second_training_establishment" defaultValue={student.second_training_establishment || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <Label>New Training Address</Label>
+                                    <Input name="second_training_address" defaultValue={student.second_training_address || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Training District</Label>
+                                    <Input name="second_training_district" defaultValue={student.second_training_district || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Divisional Secretariat</Label>
+                                    <Input name="second_divisional_secretariat" defaultValue={student.second_divisional_secretariat || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Officer In Charge (OIC)</Label>
+                                    <Input name="second_officer_in_charge" defaultValue={student.second_officer_in_charge || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New OIC Contact</Label>
+                                    <Input name="second_officer_in_charge_contact" defaultValue={student.second_officer_in_charge_contact || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Start Date</Label>
+                                    <Input name="second_training_start_date" type="date" defaultValue={student.second_training_start_date || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New End Date</Label>
+                                    <Input name="second_training_end_date" type="date" defaultValue={student.second_training_end_date || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Duration</Label>
+                                    <Input name="second_training_duration" defaultValue={student.second_training_duration || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Field of Training</Label>
+                                    <Input name="second_field_of_training" defaultValue={student.second_field_of_training || ''} readOnly={!isAdmin} />
+                                </div>
+                                {student.second_placement_form && (
+                                    <div className="col-span-2 pt-2">
+                                        <FileLink label="Novation Form" fileUrl={student.second_placement_form} highlight />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                        {student.has_phase2_placement && (
+                            <div className="grid grid-cols-2 gap-4 border p-4 rounded-md bg-green-50/50">
+                                <div className="col-span-2">
+                                    <Label className="text-base font-bold flex items-center gap-2 text-green-800">
+                                        <div className="w-1.5 h-5 bg-green-600 rounded-full" /> Phase 2 Training Placement
+                                    </Label>
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <Label>Training Establishment</Label>
+                                    <Input name="phase2_training_establishment" defaultValue={student.phase2_training_establishment || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <Label>Address</Label>
+                                    <Textarea name="phase2_training_address" defaultValue={student.phase2_training_address || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>District</Label>
+                                    <Input name="phase2_training_district" defaultValue={student.phase2_training_district || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Divisional Secretariat</Label>
+                                    <Input name="phase2_divisional_secretariat" defaultValue={student.phase2_divisional_secretariat || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>OIC Name</Label>
+                                    <Input name="phase2_officer_in_charge" defaultValue={student.phase2_officer_in_charge || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>OIC Contact</Label>
+                                    <Input name="phase2_officer_in_charge_contact" defaultValue={student.phase2_officer_in_charge_contact || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Start Date</Label>
+                                    <Input type="date" name="phase2_training_start_date" defaultValue={student.phase2_training_start_date || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>End Date</Label>
+                                    <Input type="date" name="phase2_training_end_date" defaultValue={student.phase2_training_end_date || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Duration</Label>
+                                    <Input name="phase2_training_duration" defaultValue={student.phase2_training_duration || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Field of Training</Label>
+                                    <Input name="phase2_field_of_training" defaultValue={student.phase2_field_of_training || ''} readOnly={!isAdmin} />
+                                </div>
+                                {student.phase2_agreement_form && (
+                                    <div className="col-span-2 pt-2">
+                                        <FileLink label="Phase 2 Contract" fileUrl={student.phase2_agreement_form} highlight />
+                                    </div>
+                                )}
+                                {student.phase2_work_site_form && (
+                                    <div className="col-span-2 pt-2">
+                                        <FileLink label="Phase 2 Work Site Form" fileUrl={student.phase2_work_site_form} highlight />
+                                    </div>
+                                )}
+                                {student.phase2_placement_letter && (
+                                    <div className="col-span-2 pt-2">
+                                        <FileLink label="Phase 2 Placement Letter" fileUrl={student.phase2_placement_letter} highlight />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                    {/* Phase 2 Second Training Details (Novation) */}
+                    {student.has_phase2_second_placement && (
+                        <div className="border-t pt-4 space-y-4 bg-teal-50/30 p-4 rounded-xl border-teal-100 mt-4">
+                            <Label className="text-base font-bold flex items-center gap-2 text-teal-800">
+                                <div className="w-1.5 h-5 bg-teal-600 rounded-full" /> Phase 2 Second Placement (Novation)
+                            </Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2 col-span-2">
+                                    <Label>New Phase 2 Training Establishment</Label>
+                                    <Input name="phase2_second_training_establishment" defaultValue={student.phase2_second_training_establishment || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <Label>New Phase 2 Training Address</Label>
+                                    <Input name="phase2_second_training_address" defaultValue={student.phase2_second_training_address || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Phase 2 District</Label>
+                                    <Input name="phase2_second_training_district" defaultValue={student.phase2_second_training_district || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Phase 2 Div Secretariat</Label>
+                                    <Input name="phase2_second_divisional_secretariat" defaultValue={student.phase2_second_divisional_secretariat || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Phase 2 OIC</Label>
+                                    <Input name="phase2_second_officer_in_charge" defaultValue={student.phase2_second_officer_in_charge || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Phase 2 OIC Contact</Label>
+                                    <Input name="phase2_second_officer_in_charge_contact" defaultValue={student.phase2_second_officer_in_charge_contact || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Phase 2 Start Date</Label>
+                                    <Input name="phase2_second_training_start_date" type="date" defaultValue={student.phase2_second_training_start_date || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Phase 2 End Date</Label>
+                                    <Input name="phase2_second_training_end_date" type="date" defaultValue={student.phase2_second_training_end_date || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Phase 2 Duration</Label>
+                                    <Input name="phase2_second_training_duration" defaultValue={student.phase2_second_training_duration || ''} readOnly={!isAdmin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>New Phase 2 Field of Training</Label>
+                                    <Input name="phase2_second_field_of_training" defaultValue={student.phase2_second_field_of_training || ''} readOnly={!isAdmin} />
+                                </div>
+                                {student.phase2_second_placement_form && (
+                                    <div className="col-span-2 pt-2">
+                                        <FileLink label="Phase 2 Novation Form" fileUrl={student.phase2_second_placement_form} highlight />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="border-t pt-4">
                         <Label className="mb-3 block text-base">Uploaded Documents</Label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1174,6 +1496,7 @@ function CreateLinkDialog({ onCreated }: { onCreated: () => void }) {
                 subject: formData.get('subject'),
                 batch_year: formData.get('batch_year'),
                 district: formData.get('district'),
+                number_of_trainings: parseInt(formData.get('number_of_trainings') as string) || 1,
                 assigned_coordinator: formData.get('assigned_coordinator') || null,
                 google_form_url: useGoogleForm ? formData.get('google_form_url') : null,
             });
@@ -1254,6 +1577,16 @@ function CreateLinkDialog({ onCreated }: { onCreated: () => void }) {
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Number of Trainings</Label>
+                            <Select name="number_of_trainings" required defaultValue="1">
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">1 Phase</SelectItem>
+                                    <SelectItem value="2">2 Phases</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

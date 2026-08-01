@@ -71,6 +71,7 @@ class FormLink(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_links')
     assigned_coordinator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_links')
     google_form_url = models.URLField(null=True, blank=True, help_text="Optional external Google Form URL")
+    number_of_trainings = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
@@ -105,18 +106,18 @@ class StudentSubmission(models.Model):
     degree_nvq_level = models.CharField(max_length=100)
     degree_diploma_name = models.CharField(max_length=255)
     
-    # Training Info
+    # Training Info (First Placement)
     training_district = models.CharField(max_length=100)
     divisional_secretariat = models.CharField(max_length=100)
     
-    # Head Office Info
+    # Head Office Info (First Placement)
     head_office_designation = models.CharField(max_length=255, null=True, blank=True)
     head_office_name = models.CharField(max_length=255, null=True, blank=True)
     head_office_address = models.TextField(null=True, blank=True)
     head_office_email = models.EmailField(null=True, blank=True)
     head_office_phone = models.CharField(max_length=20, null=True, blank=True)
     
-    # Work Site Info
+    # Work Site Info (First Placement)
     training_establishment = models.CharField(max_length=255) # Name of training work site
     training_address = models.TextField() # Address of training work site
     officer_in_charge = models.CharField(max_length=255) # Designation & Name of officer in-charge work site
@@ -126,6 +127,52 @@ class StudentSubmission(models.Model):
     training_end_date = models.DateField()
     training_duration = models.CharField(max_length=50)
     field_of_training = models.CharField(max_length=255)
+
+    # Second Training Info (Populated after Novation)
+    has_second_placement = models.BooleanField(default=False)
+    second_training_establishment = models.CharField(max_length=255, null=True, blank=True)
+    second_training_address = models.TextField(null=True, blank=True)
+    second_training_district = models.CharField(max_length=100, null=True, blank=True)
+    second_divisional_secretariat = models.CharField(max_length=100, null=True, blank=True)
+    second_officer_in_charge = models.CharField(max_length=255, null=True, blank=True)
+    second_officer_in_charge_contact = models.CharField(max_length=20, null=True, blank=True)
+    second_training_start_date = models.DateField(null=True, blank=True)
+    second_training_end_date = models.DateField(null=True, blank=True)
+    second_training_duration = models.CharField(max_length=50, null=True, blank=True)
+    second_field_of_training = models.CharField(max_length=255, null=True, blank=True)
+    second_placement_form = models.FileField(upload_to='student_docs/second_placement/', null=True, blank=True)
+    
+    # Phase 2 Training Info (Distinct from Novation)
+    has_phase2_placement = models.BooleanField(default=False)
+    phase2_training_establishment = models.CharField(max_length=255, null=True, blank=True)
+    phase2_training_address = models.TextField(null=True, blank=True)
+    phase2_training_district = models.CharField(max_length=100, null=True, blank=True)
+    phase2_divisional_secretariat = models.CharField(max_length=100, null=True, blank=True)
+    phase2_officer_in_charge = models.CharField(max_length=255, null=True, blank=True)
+    phase2_officer_in_charge_contact = models.CharField(max_length=20, null=True, blank=True)
+    phase2_training_start_date = models.DateField(null=True, blank=True)
+    phase2_training_end_date = models.DateField(null=True, blank=True)
+    phase2_training_duration = models.CharField(max_length=50, null=True, blank=True)
+    phase2_field_of_training = models.CharField(max_length=255, null=True, blank=True)
+    
+    # Phase 2 Files
+    phase2_work_site_form = models.FileField(upload_to='student_docs/phase2_worksite/', null=True, blank=True)
+    phase2_agreement_form = models.FileField(upload_to='student_docs/phase2_agreement/', null=True, blank=True)
+    phase2_placement_letter = models.FileField(upload_to='student_docs/phase2_placement_letter/', null=True, blank=True)
+
+    # Phase 2 Novation Fields (Populated after Novation for Phase 2)
+    has_phase2_second_placement = models.BooleanField(default=False)
+    phase2_second_training_establishment = models.CharField(max_length=255, null=True, blank=True)
+    phase2_second_training_address = models.TextField(null=True, blank=True)
+    phase2_second_training_district = models.CharField(max_length=100, null=True, blank=True)
+    phase2_second_divisional_secretariat = models.CharField(max_length=100, null=True, blank=True)
+    phase2_second_officer_in_charge = models.CharField(max_length=255, null=True, blank=True)
+    phase2_second_officer_in_charge_contact = models.CharField(max_length=20, null=True, blank=True)
+    phase2_second_training_start_date = models.DateField(null=True, blank=True)
+    phase2_second_training_end_date = models.DateField(null=True, blank=True)
+    phase2_second_training_duration = models.CharField(max_length=50, null=True, blank=True)
+    phase2_second_field_of_training = models.CharField(max_length=255, null=True, blank=True)
+    phase2_second_placement_form = models.FileField(upload_to='student_docs/phase2_second_placement/', null=True, blank=True)
 
     # Extra Data
     column_1 = models.CharField(max_length=255, null=True, blank=True)
@@ -146,6 +193,7 @@ class StudentSubmission(models.Model):
     finalized_agreement_form = models.FileField(upload_to='student_docs/finalized_agreement/', null=True, blank=True)
     is_agreement_sent = models.BooleanField(default=False)
     agreement_sent_at = models.DateTimeField(null=True, blank=True)
+    received_approval_for_resubmission = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('nic', 'form_link') # Prevent duplicates for same link? Or global? User said "Duplicate submissions must be prevented"
@@ -163,13 +211,35 @@ class NovationRequest(models.Model):
     student = models.ForeignKey(StudentSubmission, on_delete=models.CASCADE, related_name='novation_requests')
     coordinator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submitted_novations')
     
+    PHASE_CHOICES = [
+        ('PHASE_1', 'Phase 1'),
+        ('PHASE_2', 'Phase 2'),
+    ]
+    training_phase = models.CharField(max_length=20, choices=PHASE_CHOICES, default='PHASE_1')
+    
     # New placement details
-    # New placement details
-    requested_work_site = models.CharField(max_length=255, default="Not Specified") # Default to avoid null issues on migration, or allow null temporarily
+    requested_work_site = models.CharField(max_length=255, default="Not Specified")
+    new_training_address = models.TextField(null=True, blank=True)
+    new_training_district = models.CharField(max_length=100, null=True, blank=True)
+    new_divisional_secretariat = models.CharField(max_length=100, null=True, blank=True)
+    new_officer_in_charge = models.CharField(max_length=255, null=True, blank=True)
+    new_officer_in_charge_contact = models.CharField(max_length=20, null=True, blank=True)
+    new_training_start_date = models.DateField(null=True, blank=True)
+    new_training_end_date = models.DateField(null=True, blank=True)
+    new_training_duration = models.CharField(max_length=50, null=True, blank=True)
+    new_field_of_training = models.CharField(max_length=255, null=True, blank=True)
+    
     reason = models.TextField()
     
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='PENDING')
     admin_comment = models.TextField(null=True, blank=True)
+    
+    # Admin Uploaded Form
+    admin_novation_form = models.FileField(upload_to='student_docs/novation_forms/', null=True, blank=True)
+    
+    # Status for UI highlighting
+    is_read_by_admin = models.BooleanField(default=False)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -340,6 +410,12 @@ class VivaPanel(models.Model):
     university = models.CharField(max_length=255, null=True, blank=True)
     subject = models.CharField(max_length=255, null=True, blank=True)
     batch_year = models.CharField(max_length=50, null=True, blank=True)
+    
+    PHASE_CHOICES = [
+        ('PHASE_1', 'Phase 1'),
+        ('PHASE_2', 'Phase 2'),
+    ]
+    training_phase = models.CharField(max_length=20, choices=PHASE_CHOICES, default='PHASE_1')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -354,9 +430,9 @@ class VivaPanel(models.Model):
 
 class VivaAssignment(models.Model):
     panel = models.ForeignKey(VivaPanel, on_delete=models.CASCADE, related_name='assignments')
-    student = models.OneToOneField(
+    student = models.ForeignKey(
         'StudentSubmission', on_delete=models.CASCADE,
-        related_name='viva_assignment'
+        related_name='viva_assignments'
     )
     slot_number = models.IntegerField(null=True, blank=True)
     scheduled_time = models.TimeField(null=True, blank=True)

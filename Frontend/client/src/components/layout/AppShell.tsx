@@ -10,12 +10,21 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { ChildProcess } from "child_process";
-import { Children } from "react";
+import { useEffect } from "react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { notifications, markRead } = useStore();
+  const { notifications, markRead, fetchNotifications, currentUser } = useStore();
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 30000); // Auto-refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [currentUser, fetchNotifications]);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground font-sans">

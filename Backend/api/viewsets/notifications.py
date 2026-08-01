@@ -10,7 +10,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     authentication_classes = (CsrfExemptSessionAuthentication,)
 
     def get_queryset(self):
-        return Notification.objects.filter(to_user=self.request.user)
+        return Notification.objects.filter(to_user=self.request.user).order_by('-created_at')
 
     @action(detail=True, methods=['post'])
     def read(self, request, pk=None):

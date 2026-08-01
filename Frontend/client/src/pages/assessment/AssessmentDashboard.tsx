@@ -135,6 +135,7 @@ export default function AssessmentDashboard() {
     const [search, setSearch] = useState("");
     const [viewingStudent, setViewingStudent] = useState<StudentSubmission | null>(null);
     const [activeTab, setActiveTab] = useState<ActiveTab>('students');
+    const [assessmentPhase, setAssessmentPhase] = useState<'PHASE_1' | 'PHASE_2'>('PHASE_1');
     const [vivaPanels, setVivaPanels] = useState<VivaPanel[]>([]);
     const [vivaAssignments, setVivaAssignments] = useState<VivaAssignment[]>([]);
     const [assessors, setAssessors] = useState<User[]>([]);
@@ -149,7 +150,7 @@ export default function AssessmentDashboard() {
         { name: "Final Report", max: 100 }
     ];
 
-    const [newPanel, setNewPanel] = useState<{ name: string; dates: string[]; assessor: string; location: string; university: string; batch_year: string; subject: string; marking_criteria: MarkingCriterion[] }>({ name: "", dates: [], assessor: "", location: "", university: "", batch_year: "", subject: "", marking_criteria: DEFAULT_CRITERIA });
+    const [newPanel, setNewPanel] = useState<{ name: string; dates: string[]; assessor: string; location: string; university: string; batch_year: string; subject: string; training_phase: string; marking_criteria: MarkingCriterion[] }>({ name: "", dates: [], assessor: "", location: "", university: "", batch_year: "", subject: "", training_phase: "PHASE_1", marking_criteria: DEFAULT_CRITERIA });
     const [sortBy, setSortBy] = useState<'name' | 'location' | 'reg_no'>('name');
     const [openAssessorDropdown, setOpenAssessorDropdown] = useState(false);
     const [tempDate, setTempDate] = useState("");
@@ -227,7 +228,7 @@ export default function AssessmentDashboard() {
             }
             setShowCreatePanel(false);
             setTempDate("");
-            setNewPanel({ name: "", dates: [], assessor: "", location: "", university: "", batch_year: "", subject: "", marking_criteria: DEFAULT_CRITERIA });
+            setNewPanel({ name: "", dates: [], assessor: "", location: "", university: "", batch_year: "", subject: "", training_phase: "PHASE_1", marking_criteria: DEFAULT_CRITERIA });
             setEditingPanelId(null);
             fetchInitialData();
         } catch (error) {
@@ -256,6 +257,7 @@ export default function AssessmentDashboard() {
             university: panel.university || "",
             batch_year: panel.batch_year || "",
             subject: panel.subject || "",
+            training_phase: panel.training_phase || "PHASE_1",
             marking_criteria: panel.marking_criteria?.length ? panel.marking_criteria : DEFAULT_CRITERIA
         });
         setShowCreatePanel(true);
@@ -296,13 +298,14 @@ export default function AssessmentDashboard() {
 
     const filteredStudents = useMemo(() => {
         return students.filter(s => {
+            if (assessmentPhase === 'PHASE_2' && !s.has_phase2_placement) return false;
             if (navPath.year && s.batch_year !== navPath.year) return false;
             if (navPath.university && s.university !== navPath.university) return false;
             if (navPath.district && s.district !== navPath.district) return false;
             if (navPath.subject && s.subject !== navPath.subject) return false;
             return true;
         });
-    }, [students, navPath]);
+    }, [students, navPath, assessmentPhase]);
 
     const filteredVivaPanels = useMemo(() => {
         return vivaPanels.filter(p => {
@@ -356,31 +359,38 @@ export default function AssessmentDashboard() {
         let results = [...filteredStudents];
         if (search) {
             const q = search.toLowerCase();
-            results = results.filter(s =>
-                s.full_name.toLowerCase().includes(q) ||
-                s.initials_name.toLowerCase().includes(q) ||
-                s.student_reg_no.toLowerCase().includes(q) ||
-                s.nic.toLowerCase().includes(q) ||
-                (s.admin_reg_number?.toLowerCase().includes(q) ?? false) ||
-                s.training_establishment.toLowerCase().includes(q) ||
-                (s.training_district?.toLowerCase().includes(q) ?? false)
-            );
+            results = results.filter(s => {
+                const establishment = assessmentPhase === 'PHASE_2' ? (s.phase2_training_establishment || "") : s.training_establishment;
+                const dist = assessmentPhase === 'PHASE_2' ? (s.phase2_training_district || "") : (s.training_district || "");
+                return (
+                    s.full_name.toLowerCase().includes(q) ||
+                    s.initials_name.toLowerCase().includes(q) ||
+                    s.student_reg_no.toLowerCase().includes(q) ||
+                    s.nic.toLowerCase().includes(q) ||
+                    (s.admin_reg_number?.toLowerCase().includes(q) ?? false) ||
+                    establishment.toLowerCase().includes(q) ||
+                    dist.toLowerCase().includes(q)
+                );
+            });
         }
 
         results.sort((a, b) => {
             if (sortBy === 'name') return a.full_name.localeCompare(b.full_name);
-            if (sortBy === 'location') return (a.training_district || "").localeCompare(b.training_district || "");
+            if (sortBy === 'location') {
+                const locA = assessmentPhase === 'PHASE_2' ? (a.phase2_training_district || "") : (a.training_district || "");
+                const locB = assessmentPhase === 'PHASE_2' ? (b.phase2_training_district || "") : (b.training_district || "");
+                return locA.localeCompare(locB);
+            }
             if (sortBy === 'reg_no') return a.student_reg_no.localeCompare(b.student_reg_no);
             return 0;
         });
 
         return results.map(s => {
-            const endDate = new Date(s.training_end_date);
-            const today = new Date();
-            const isTrainingCompleted = endDate <= today;
+            const dateStr = assessmentPhase === 'PHASE_2' ? s.phase2_training_end_date : s.training_end_date;
+            const isTrainingCompleted = dateStr ? new Date(dateStr) <= new Date() : false;
             return { ...s, isTrainingCompleted };
         });
-    }, [filteredStudents, search, sortBy]);
+    }, [filteredStudents, search, sortBy, assessmentPhase]);
 
     const allAssignments = useMemo(() => {
         return vivaAssignments.map(a => {
@@ -524,7 +534,7 @@ export default function AssessmentDashboard() {
                         <Card className="min-h-[600px] border-t-4 border-t-purple-600 shadow-sm animate-in zoom-in-95 duration-200">
                             <CardHeader className="bg-muted/10 border-b pb-4">
                                 <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
-                                    <div>
+                                    <div className="space-y-4">
                                         <CardTitle className="text-xl text-purple-800 flex items-center gap-2">
                                             <FileText className="h-5 w-5" /> Completed Students
                                             <Badge className="ml-2 bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100 font-semibold">
@@ -536,11 +546,16 @@ export default function AssessmentDashboard() {
                                                 </Badge>
                                             )}
                                         </CardTitle>
-                                        <CardDescription>
-                                            Students who have completed their placement process — ready for assessment.
-                                        </CardDescription>
+                                        
+                                        <Tabs value={assessmentPhase} onValueChange={(v) => setAssessmentPhase(v as 'PHASE_1' | 'PHASE_2')} className="w-[300px]">
+                                            <TabsList className="grid w-full grid-cols-2 h-9">
+                                                <TabsTrigger value="PHASE_1" className="text-xs">Phase 1 Vivas</TabsTrigger>
+                                                <TabsTrigger value="PHASE_2" className="text-xs">Phase 2 Vivas</TabsTrigger>
+                                            </TabsList>
+                                        </Tabs>
+                                        
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                                         {selectedStudents.length > 0 && currentUser?.role === 'ADMIN' && (
                                             <div className="flex items-center gap-2 mr-2">
                                                 <Select onValueChange={(v) => handleBulkAssign(parseInt(v))}>
@@ -548,7 +563,7 @@ export default function AssessmentDashboard() {
                                                         <SelectValue placeholder="Assign to Panel..." />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {filteredVivaPanels.map(p => (
+                                                        {filteredVivaPanels.filter(p => p.training_phase === assessmentPhase).map(p => (
                                                             <SelectItem key={p.id} value={p.id.toString()}>
                                                                 {p.name} ({p.dates && p.dates.length > 0 ? p.dates.join(', ') : 'No Dates'})
                                                             </SelectItem>
