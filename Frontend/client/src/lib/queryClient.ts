@@ -4,7 +4,8 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE
 
 export function buildUrl(url: string): string {
   if (url.startsWith('/api') && API_BASE_URL) {
-    return `${API_BASE_URL}${url}`;
+    const cleanBase = API_BASE_URL.replace(/\/+$/, '');
+    return `${cleanBase}${url}`;
   }
   return url;
 }
