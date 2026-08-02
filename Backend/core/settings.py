@@ -153,10 +153,20 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Vercel backend URL eka methanata danna
-ALLOWED_HOSTS = ['naita-mis-backend.vercel.app', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['naita-mis-backend.vercel.app', '.vercel.app', 'localhost', '127.0.0.1']
+
+CORS_ALLOW_CREDENTIALS = True
 
 # Vercel Frontend URL eka methanata danna (Awasaneta '/' danna epa)
 CORS_ALLOWED_ORIGINS = [
     "https://naita-mis.vercel.app", 
+    "http://localhost:5000",
     "http://localhost:3000",
 ]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://naita-mis.vercel.app",
+    "http://localhost:5000",
+    "http://localhost:3000",
+]
+
