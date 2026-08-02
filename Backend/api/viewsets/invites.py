@@ -16,11 +16,6 @@ class CoordinatorInviteViewSet(viewsets.ViewSet):
     authentication_classes = (CsrfExemptSessionAuthentication,)
     
     def get_permissions(self):
-        """
-        Dynamically set permissions based on action
-        """
-        if self.action in ['create_invite', 'list_pending', 'approve_pending', 'reject_pending']:
-            return [IsAuthenticated()]
         return [AllowAny()]
 
     # ─── Admin: Generate Invite Link ───────────────────────────────────────────

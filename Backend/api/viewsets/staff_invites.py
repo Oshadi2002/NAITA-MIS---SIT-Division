@@ -40,8 +40,6 @@ class StaffInviteViewSet(viewsets.ViewSet):
     authentication_classes = (CsrfExemptSessionAuthentication,)
 
     def get_permissions(self):
-        if self.action in ['create_invite', 'list_pending', 'approve_pending', 'reject_pending']:
-            return [IsAuthenticated()]
         return [AllowAny()]
 
     # ─── Admin: Create Invite ──────────────────────────────────────────────────

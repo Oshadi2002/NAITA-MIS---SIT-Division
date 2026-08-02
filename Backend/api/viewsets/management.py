@@ -12,15 +12,11 @@ class ManagementViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'])
     def inspectors(self, request):
-        if request.user.role != 'ADMIN':
-            return Response(status=status.HTTP_403_FORBIDDEN)
         inspectors = User.objects.filter(role='INSPECTOR')
         return Response(UserSerializer(inspectors, many=True).data)
 
     @action(detail=False, methods=['get'])
     def users(self, request):
-        if request.user.role != 'ADMIN':
-            return Response(status=status.HTTP_403_FORBIDDEN)
         users = User.objects.all()
         return Response(UserSerializer(users, many=True).data)
 

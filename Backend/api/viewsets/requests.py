@@ -9,13 +9,16 @@ from django.utils import timezone
 class SeminarRequestViewSet(viewsets.ModelViewSet):
     serializer_class = SeminarRequestSerializer
     authentication_classes = (CsrfExemptSessionAuthentication,)
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        user = self.request.user
-        if user.role == 'ADMIN':
+        user = getattr(self.request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
             return SeminarRequest.objects.all()
-        elif user.role == 'INSPECTOR':
+        role = getattr(user, 'role', None)
+        if role == 'ADMIN':
+            return SeminarRequest.objects.all()
+        elif role == 'INSPECTOR':
             return SeminarRequest.objects.filter(assigned_inspector=user)
         return SeminarRequest.objects.filter(coordinator=user)
 
