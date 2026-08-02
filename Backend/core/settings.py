@@ -152,25 +152,21 @@ EMAIL_HOST_PASSWORD = 'dehp izcv nzrx hciv'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Vercel backend URL eka methanata danna
-ALLOWED_HOSTS = ['naita-mis-backend.vercel.app', '.vercel.app', 'localhost', '127.0.0.1']
+# Railway and Production Hosts
+ALLOWED_HOSTS = ['*']
 
 CORS_ALLOW_CREDENTIALS = True
-
-# Vercel Frontend URL eka methanata danna (Awasaneta '/' danna epa)
-CORS_ALLOWED_ORIGINS = [
-    "https://naita-mis.vercel.app", 
-    "http://localhost:5000",
-    "http://localhost:3000",
-]
+CORS_ALLOW_ALL_ORIGINS = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://naita-mis.vercel.app",
+    "https://*.railway.app",
+    "https://*.up.railway.app",
     "http://localhost:5000",
     "http://localhost:3000",
+    "http://localhost:5173",
 ]
 
-# Cross-Domain Cookie & Session settings for Vercel
+# Cross-Domain Cookie & Session settings
 SESSION_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = 'None'

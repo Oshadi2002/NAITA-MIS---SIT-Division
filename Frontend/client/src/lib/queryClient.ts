@@ -1,6 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://naita-mis-backend.vercel.app' : '');
+export const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '';
 
 export function buildUrl(url: string): string {
   if (url.startsWith('/api') && API_BASE_URL) {
