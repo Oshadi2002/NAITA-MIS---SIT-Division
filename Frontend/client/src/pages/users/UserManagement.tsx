@@ -341,7 +341,8 @@ export default function UserManagement() {
   };
 
   // ─── Existing Users ─────────────────────────────────────────────────────────
-  const filteredUsers = users.filter(u => {
+  const safeUsers = Array.isArray(users) ? users : [];
+  const filteredUsers = safeUsers.filter(u => {
     const matchesSearch =
       u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -351,8 +352,8 @@ export default function UserManagement() {
     return matchesSearch && matchesUni && matchesFac;
   });
 
-  const universities = Array.from(new Set(users.map(u => u.university).filter((v): v is string => !!v)));
-  const faculties = Array.from(new Set(users.map(u => u.faculty).filter((v): v is string => !!v)));
+  const universities = Array.from(new Set(safeUsers.map(u => u.university).filter((v): v is string => !!v)));
+  const faculties = Array.from(new Set(safeUsers.map(u => u.faculty).filter((v): v is string => !!v)));
 
   // UPDATED: Use store's createUser with better error handling
   const handleSubmit = async () => {

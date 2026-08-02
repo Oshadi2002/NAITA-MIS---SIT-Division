@@ -246,14 +246,11 @@ class StaffInviteViewSet(viewsets.ViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    # ─── Admin: List Pending Staff Registrations ───────────────────────────────
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def list_pending(self, request):
-        if request.user.role != 'ADMIN':
-            return Response(
-                {'message': 'Permission denied.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False) or getattr(user, 'role', None) != 'ADMIN':
+            return Response([])
 
         try:
             pending = StaffPendingRegistration.objects.filter(

@@ -158,9 +158,12 @@ export default function AssessmentDashboard() {
         return newPanel.marking_criteria.reduce((sum, c) => sum + (Number(c.max) || 0), 0);
     }, [newPanel.marking_criteria]);
 
-    const uniqueUniversities = useMemo(() => Array.from(new Set(students.map(s => s.university))).filter(Boolean).sort(), [students]);
-    const uniqueBatchYears = useMemo(() => Array.from(new Set(students.map(s => s.batch_year))).filter(Boolean).sort(), [students]);
-    const uniqueSubjects = useMemo(() => Array.from(new Set(students.map(s => s.subject))).filter(Boolean).sort(), [students]);
+    const safeStudents = Array.isArray(students) ? students : [];
+    const safePanels = Array.isArray(vivaPanels) ? vivaPanels : [];
+
+    const uniqueUniversities = useMemo(() => Array.from(new Set(safeStudents.map(s => s.university))).filter(Boolean).sort(), [safeStudents]);
+    const uniqueBatchYears = useMemo(() => Array.from(new Set(safeStudents.map(s => s.batch_year))).filter(Boolean).sort(), [safeStudents]);
+    const uniqueSubjects = useMemo(() => Array.from(new Set(safeStudents.map(s => s.subject))).filter(Boolean).sort(), [safeStudents]);
 
     const [navPath, setNavPath] = useState<{
         year?: string;
@@ -297,7 +300,7 @@ export default function AssessmentDashboard() {
     };
 
     const filteredStudents = useMemo(() => {
-        return students.filter(s => {
+        return safeStudents.filter(s => {
             if (assessmentPhase === 'PHASE_2' && !s.has_phase2_placement) return false;
             if (navPath.year && s.batch_year !== navPath.year) return false;
             if (navPath.university && s.university !== navPath.university) return false;
@@ -305,16 +308,16 @@ export default function AssessmentDashboard() {
             if (navPath.subject && s.subject !== navPath.subject) return false;
             return true;
         });
-    }, [students, navPath, assessmentPhase]);
+    }, [safeStudents, navPath, assessmentPhase]);
 
     const filteredVivaPanels = useMemo(() => {
-        return vivaPanels.filter(p => {
+        return safePanels.filter(p => {
             if (navPath.year && p.batch_year !== navPath.year) return false;
             if (navPath.university && p.university !== navPath.university) return false;
             if (navPath.subject && p.subject !== navPath.subject) return false;
             return true;
         });
-    }, [vivaPanels, navPath]);
+    }, [safePanels, navPath]);
 
     const currentLevel: NavLevel = useMemo(() => {
         if (!navPath.year) return 'years';
