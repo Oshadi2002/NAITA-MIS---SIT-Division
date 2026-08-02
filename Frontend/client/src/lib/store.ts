@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { apiRequest } from './queryClient';
+import { apiRequest, buildUrl } from './queryClient';
 import { type User, type SeminarRequest, type Notification, type RequestStatus, type Role } from '@shared/schema';
 
 export type { User, SeminarRequest, Notification, RequestStatus, Role };
@@ -126,7 +126,7 @@ export const useStore = create<AppState>()((set, get) => ({
 
   initialize: async () => {
     try {
-      const res = await fetch('/api/auth/user/', {
+      const res = await fetch(buildUrl('/api/auth/user/'), {
         headers: { 'Accept': 'application/json' },
         credentials: 'include'
       });
@@ -203,7 +203,7 @@ export const useStore = create<AppState>()((set, get) => ({
 
   fetchUsers: async () => {
     try {
-      const res = await fetch('/api/management/users/', {
+      const res = await fetch(buildUrl('/api/management/users/'), {
         headers: { 'Accept': 'application/json' },
         credentials: 'include'
       });
@@ -253,7 +253,7 @@ export const useStore = create<AppState>()((set, get) => ({
 
   fetchPendingStaff: async () => {
     try {
-      const res = await fetch('/api/staff-invites/list_pending/', {
+      const res = await fetch(buildUrl('/api/staff-invites/list_pending/'), {
         credentials: 'include'
       });
 
@@ -349,7 +349,7 @@ export const useStore = create<AppState>()((set, get) => ({
 
   fetchPendingCoordinators: async () => {
     try {
-      const res = await fetch('/api/coordinator-invites/list_pending/', {
+      const res = await fetch(buildUrl('/api/coordinator-invites/list_pending/'), {
         credentials: 'include'
       });
 
@@ -523,7 +523,7 @@ export const useStore = create<AppState>()((set, get) => ({
 
   fetchRequests: async () => {
     try {
-      const res = await fetch('/api/requests/', {
+      const res = await fetch(buildUrl('/api/requests/'), {
         credentials: 'include'
       });
 
@@ -626,7 +626,7 @@ export const useStore = create<AppState>()((set, get) => ({
 
   fetchNotifications: async () => {
     try {
-      const res = await fetch('/api/notifications/', {
+      const res = await fetch(buildUrl('/api/notifications/'), {
         credentials: 'include'
       });
 
