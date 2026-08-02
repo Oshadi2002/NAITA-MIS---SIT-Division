@@ -229,16 +229,17 @@ export const useStore = create<AppState>()((set, get) => ({
       });
 
       if (res.ok) {
-        const users = await res.json();
+        const data = await res.json();
+        const users = Array.isArray(data) ? data : (data.results || []);
         set({ users, error: null });
       } else if (res.status === 403) {
-        set({ error: "Permission denied to fetch users" });
+        set({ users: [], error: "Permission denied to fetch users" });
       } else {
-        set({ error: `Failed to fetch users: ${res.status}` });
+        set({ users: [], error: `Failed to fetch users: ${res.status}` });
       }
     } catch (e: any) {
       console.error("Fetch users failed", e);
-      set({ error: e.message || "Failed to fetch users" });
+      set({ users: [], error: e.message || "Failed to fetch users" });
     }
   },
 
@@ -279,15 +280,16 @@ export const useStore = create<AppState>()((set, get) => ({
 
       if (res.ok) {
         const data = await res.json();
-        set({ pendingStaff: data, error: null });
+        const pendingStaff = Array.isArray(data) ? data : (data.results || []);
+        set({ pendingStaff, error: null });
       } else if (res.status === 403) {
-        set({ error: "Permission denied to fetch pending staff" });
+        set({ pendingStaff: [], error: "Permission denied to fetch pending staff" });
       } else {
-        set({ error: `Failed to fetch pending staff: ${res.status}` });
+        set({ pendingStaff: [], error: `Failed to fetch pending staff: ${res.status}` });
       }
     } catch (e: any) {
       console.error("Fetch pending staff failed", e);
-      set({ error: e.message || "Failed to fetch pending staff" });
+      set({ pendingStaff: [], error: e.message || "Failed to fetch pending staff" });
     }
   },
 
@@ -375,15 +377,16 @@ export const useStore = create<AppState>()((set, get) => ({
 
       if (res.ok) {
         const data = await res.json();
-        set({ pendingCoordinators: data, error: null });
+        const pendingCoordinators = Array.isArray(data) ? data : (data.results || []);
+        set({ pendingCoordinators, error: null });
       } else if (res.status === 403) {
-        set({ error: "Permission denied to fetch pending coordinators" });
+        set({ pendingCoordinators: [], error: "Permission denied to fetch pending coordinators" });
       } else {
-        set({ error: `Failed to fetch pending coordinators: ${res.status}` });
+        set({ pendingCoordinators: [], error: `Failed to fetch pending coordinators: ${res.status}` });
       }
     } catch (e: any) {
       console.error("Fetch pending coordinators failed", e);
-      set({ error: e.message || "Failed to fetch pending coordinators" });
+      set({ pendingCoordinators: [], error: e.message || "Failed to fetch pending coordinators" });
     }
   },
 
@@ -548,14 +551,15 @@ export const useStore = create<AppState>()((set, get) => ({
       });
 
       if (res.ok) {
-        const requests = await res.json();
+        const data = await res.json();
+        const requests = Array.isArray(data) ? data : (data.results || []);
         set({ requests, error: null });
       } else {
-        set({ error: `Failed to fetch requests: ${res.status}` });
+        set({ requests: [], error: `Failed to fetch requests: ${res.status}` });
       }
     } catch (e: any) {
       console.error("Fetch requests failed", e);
-      set({ error: e.message || "Failed to fetch requests" });
+      set({ requests: [], error: e.message || "Failed to fetch requests" });
     }
   },
 
@@ -651,14 +655,15 @@ export const useStore = create<AppState>()((set, get) => ({
       });
 
       if (res.ok) {
-        const notifications = await res.json();
+        const data = await res.json();
+        const notifications = Array.isArray(data) ? data : (data.results || []);
         set({ notifications, error: null });
       } else {
-        set({ error: `Failed to fetch notifications: ${res.status}` });
+        set({ notifications: [], error: `Failed to fetch notifications: ${res.status}` });
       }
     } catch (e: any) {
       console.error("Fetch notifications failed", e);
-      set({ error: e.message || "Failed to fetch notifications" });
+      set({ notifications: [], error: e.message || "Failed to fetch notifications" });
     }
   },
 
