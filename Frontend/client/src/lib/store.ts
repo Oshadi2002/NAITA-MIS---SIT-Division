@@ -155,7 +155,7 @@ export const useStore = create<AppState>()((set, get) => ({
           console.error("Failed to parse user JSON:", parseError);
           set({ error: "Failed to parse user data" });
         }
-      } else if (res.status === 401) {
+      } else if (res.status === 401 || res.status === 403) {
         // Not logged in - clear user but don't set error
         set({ currentUser: null });
       } else {
