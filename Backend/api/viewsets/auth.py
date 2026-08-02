@@ -13,6 +13,15 @@ class AuthViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
     def login(self, request):
         try:
+            # Ensure DB is migrated and seeded if users table is empty on Vercel lambda
+            try:
+                if User.objects.count() == 0:
+                    from django.core.management import call_command
+                    call_command('migrate', interactive=False)
+                    call_command('seed_data', interactive=False)
+            except Exception as se:
+                print(f"Auto-seed during login error: {se}")
+
             username = request.data.get('username')
             password = request.data.get('password')
             requested_role = request.data.get('role')

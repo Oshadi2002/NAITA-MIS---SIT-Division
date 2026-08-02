@@ -36,26 +36,32 @@ class Command(BaseCommand):
             },
         ]
 
-        # Ensure requested accounts exist with updated credentials
-        for udata in users_data:
-            password = udata.pop('password')
-            user, created = User.objects.get_or_create(
-                username=udata['username'],
-                defaults=udata
-            )
-            # Update password and fields
-            for key, val in udata.items():
-                setattr(user, key, val)
+        for u_info in users_data:
+            username = u_info['username']
+            email = u_info['email']
+            password = u_info['password']
+            role = u_info['role']
+
+            user = User.objects.filter(username=username).first()
+            if not user:
+                user = User.objects.filter(email=email).first()
+
+            if not user:
+                user = User(username=username, email=email, role=role)
+
+            user.role = role
+            user.first_name = u_info.get('first_name', '')
+            user.last_name = u_info.get('last_name', '')
+            user.university = u_info.get('university', '')
+            if u_info.get('is_superuser'):
+                user.is_superuser = True
+                user.is_staff = True
             user.set_password(password)
             user.save()
-
-            status_str = "Created" if created else "Updated"
-            self.stdout.write(self.style.SUCCESS(f"{status_str} user: {user.username} ({user.role})"))
+            self.stdout.write(self.style.SUCCESS(f"Configured user: {user.username} ({user.role})"))
 
         # Seed initial request if none exist
-        admin = User.objects.filter(role='ADMIN').first()
         coord = User.objects.filter(role='UNIVERSITY_COORDINATOR').first()
-        inspector = User.objects.filter(role='INSPECTOR').first()
 
         if SeminarRequest.objects.count() == 0 and coord:
             SeminarRequest.objects.create(
