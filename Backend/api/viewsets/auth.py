@@ -13,25 +13,51 @@ class AuthViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
     def login(self, request):
         try:
-            # Ensure DB is migrated and seeded if users table is empty on Vercel lambda
+            # Ensure DB is migrated and seeded on Vercel lambda
             try:
-                if User.objects.count() == 0:
-                    from django.core.management import call_command
-                    call_command('migrate', interactive=False)
+                from django.core.management import call_command
+                call_command('migrate', interactive=False)
+                if User.objects.count() < 3:
                     call_command('seed_data', interactive=False)
             except Exception as se:
-                print(f"Auto-seed during login error: {se}")
+                print(f"Auto-seed error: {se}")
 
             username = request.data.get('username')
             password = request.data.get('password')
             requested_role = request.data.get('role')
             print(f"DEBUG: Login attempt - username: {username}, role: {requested_role}")
             
+            # 1. Try standard Django authenticate
             user = authenticate(username=username, password=password)
-            if not user:
-                user_obj = User.objects.filter(email=username).first()
-                if user_obj:
-                    user = authenticate(username=user_obj.username, password=password)
+            
+            # 2. Try direct email / username match with check_password
+            if not user and username and password:
+                user_obj = User.objects.filter(email__iexact=username).first() or User.objects.filter(username__iexact=username).first()
+                if user_obj and user_obj.check_password(password):
+                    user = user_obj
+
+            # 3. Fallback provision for requested default accounts if needed
+            if not user and username and password:
+                DEFAULT_USERS = {
+                    'yasirunimsara23@gmail.com': ('rathna2002', 'ADMIN'),
+                    'shalanka@gmail.com': ('Chabby02', 'UNIVERSITY_COORDINATOR'),
+                    'iresha@gmail.com': ('12345', 'INSPECTOR'),
+                }
+                lower_user = username.lower().strip()
+                if lower_user in DEFAULT_USERS:
+                    req_pass, req_role = DEFAULT_USERS[lower_user]
+                    if password == req_pass:
+                        u_obj = User.objects.filter(email__iexact=lower_user).first() or User.objects.filter(username__iexact=lower_user).first()
+                        if not u_obj:
+                            u_obj = User(username=lower_user, email=lower_user, role=req_role)
+                        u_obj.role = req_role
+                        u_obj.is_active = True
+                        if req_role == 'ADMIN':
+                            u_obj.is_superuser = True
+                            u_obj.is_staff = True
+                        u_obj.set_password(req_pass)
+                        u_obj.save()
+                        user = u_obj
 
             if user:
                 if requested_role and user.role != requested_role:
