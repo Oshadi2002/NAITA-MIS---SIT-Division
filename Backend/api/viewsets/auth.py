@@ -37,7 +37,8 @@ class AuthViewSet(viewsets.ViewSet):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return Response({'message': 'Internal Server Error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            print(f"LOGIN ERROR: {e}")
+            return Response({'message': f'Internal Server Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['post'])
     def logout(self, request):
