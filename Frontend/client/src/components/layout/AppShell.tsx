@@ -14,7 +14,8 @@ import { useEffect } from "react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { notifications, markRead, fetchNotifications, currentUser } = useStore();
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
+  const unreadCount = safeNotifications.filter(n => n && !n.read).length;
 
   useEffect(() => {
     if (!currentUser) return;
@@ -51,13 +52,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <h4 className="font-semibold text-sm">Notifications</h4>
                 </div>
                 <ScrollArea className="h-[300px]">
-                  {notifications.length === 0 ? (
+                  {safeNotifications.length === 0 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
                       No notifications yet.
                     </div>
                   ) : (
                     <div className="divide-y">
-                      {notifications.map((notif) => (
+                      {safeNotifications.map((notif) => (
                         <div
                           key={notif.id}
                           className={cn(

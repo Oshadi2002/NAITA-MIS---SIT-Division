@@ -28,8 +28,8 @@ export function Sidebar() {
     enabled: currentUser?.role === 'ADMIN' || currentUser?.role === 'UNIVERSITY_COORDINATOR'
   });
 
-  const unreadNovationCount = currentUser?.role === 'ADMIN' 
-    ? novationRequests?.filter((r: any) => !r.is_read_by_admin && r.status === 'PENDING').length 
+  const unreadNovationCount = (currentUser?.role === 'ADMIN' && Array.isArray(novationRequests))
+    ? novationRequests.filter((r: any) => r && !r.is_read_by_admin && r.status === 'PENDING').length 
     : 0;
 
   if (!currentUser) return null;

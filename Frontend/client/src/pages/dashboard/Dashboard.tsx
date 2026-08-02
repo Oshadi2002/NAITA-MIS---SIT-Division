@@ -14,7 +14,7 @@ export default function Dashboard() {
   if (!currentUser) return null;
 
   // Calculate Stats for the Card Preview
-  const myRequests = requests;
+  const myRequests = Array.isArray(requests) ? requests : [];
 
   const pending = myRequests.filter(r => r.status === 'PENDING').length;
   // const approved = myRequests.filter(r => r.status === 'APPROVED').length; // Unused in launchpad
