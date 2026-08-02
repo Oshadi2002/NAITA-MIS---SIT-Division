@@ -126,6 +126,9 @@ export const useStore = create<AppState>()((set, get) => ({
 
   initialize: async () => {
     try {
+      const savedUserStr = localStorage.getItem('naita_user');
+      let fallbackUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+
       const res = await fetch(buildUrl('/api/auth/user/'), {
         headers: { 'Accept': 'application/json' },
         credentials: 'include'
@@ -135,35 +138,44 @@ export const useStore = create<AppState>()((set, get) => ({
         const text = await res.text();
         try {
           const user = JSON.parse(text);
+          localStorage.setItem('naita_user', JSON.stringify(user));
           set({ currentUser: user, error: null });
 
-          // Fetch data in parallel
-          const promises = [
-            get().fetchRequests(),
-            get().fetchNotifications()
-          ];
-
+          const promises = [get().fetchRequests(), get().fetchNotifications()];
           if (user.role === 'ADMIN') {
-            promises.push(get().fetchUsers());
-            promises.push(get().fetchPendingCoordinators());
-            promises.push(get().fetchPendingStaff());
+            promises.push(get().fetchUsers(), get().fetchPendingCoordinators(), get().fetchPendingStaff());
           }
-
-          await Promise.all(promises);
-
+          await Promise.all(promises).catch(() => {});
         } catch (parseError) {
           console.error("Failed to parse user JSON:", parseError);
           set({ error: "Failed to parse user data" });
         }
       } else if (res.status === 401 || res.status === 403) {
-        // Not logged in - clear user but don't set error
-        set({ currentUser: null });
+        if (fallbackUser) {
+          set({ currentUser: fallbackUser, error: null });
+          const promises = [get().fetchRequests(), get().fetchNotifications()];
+          if (fallbackUser.role === 'ADMIN') {
+            promises.push(get().fetchUsers(), get().fetchPendingCoordinators(), get().fetchPendingStaff());
+          }
+          await Promise.all(promises).catch(() => {});
+        } else {
+          set({ currentUser: null });
+        }
       } else {
-        set({ error: `Failed to initialize: ${res.status}` });
+        if (fallbackUser) {
+          set({ currentUser: fallbackUser, error: null });
+        } else {
+          set({ error: `Failed to initialize: ${res.status}` });
+        }
       }
     } catch (e) {
       console.error("Initialization failed", e);
-      set({ error: "Network error during initialization" });
+      const savedUserStr = localStorage.getItem('naita_user');
+      if (savedUserStr) {
+        set({ currentUser: JSON.parse(savedUserStr), error: null });
+      } else {
+        set({ error: "Network error during initialization" });
+      }
     } finally {
       set({ isLoading: false });
     }
@@ -173,8 +185,14 @@ export const useStore = create<AppState>()((set, get) => ({
     try {
       const res = await apiRequest('POST', '/api/auth/login/', credentials);
       const user = await res.json();
+      localStorage.setItem('naita_user', JSON.stringify(user));
       set({ currentUser: user, error: null });
-      await get().initialize();
+      
+      const promises = [get().fetchRequests(), get().fetchNotifications()];
+      if (user.role === 'ADMIN') {
+        promises.push(get().fetchUsers(), get().fetchPendingCoordinators(), get().fetchPendingStaff());
+      }
+      await Promise.all(promises).catch(() => {});
       return true;
     } catch (e: any) {
       console.error("Login failed", e);
@@ -185,7 +203,8 @@ export const useStore = create<AppState>()((set, get) => ({
 
   logout: async () => {
     try {
-      await apiRequest('POST', '/api/auth/logout/');
+      await apiRequest('POST', '/api/auth/logout/').catch(() => {});
+      localStorage.removeItem('naita_user');
       set({
         currentUser: null,
         requests: [],
@@ -197,7 +216,8 @@ export const useStore = create<AppState>()((set, get) => ({
       });
     } catch (e: any) {
       console.error("Logout failed", e);
-      set({ error: e.message || "Logout failed" });
+      localStorage.removeItem('naita_user');
+      set({ currentUser: null, error: e.message || "Logout failed" });
     }
   },
 
