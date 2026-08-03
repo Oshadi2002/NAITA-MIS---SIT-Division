@@ -127,7 +127,14 @@ export const useStore = create<AppState>()((set, get) => ({
   initialize: async () => {
     try {
       const savedUserStr = localStorage.getItem('naita_user');
-      let fallbackUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+      let fallbackUser = null;
+      if (savedUserStr && savedUserStr !== 'undefined' && savedUserStr !== 'null') {
+        try {
+          fallbackUser = JSON.parse(savedUserStr);
+        } catch (e) {
+          localStorage.removeItem('naita_user');
+        }
+      }
 
       const res = await fetch(buildUrl('/api/auth/user/'), {
         headers: { 'Accept': 'application/json' },
@@ -137,36 +144,29 @@ export const useStore = create<AppState>()((set, get) => ({
       if (res.ok) {
         const text = await res.text();
         try {
+          if (!text || text.trim() === '' || text.trim() === 'null') {
+            if (!fallbackUser) localStorage.removeItem('naita_user');
+            set({ currentUser: fallbackUser, error: null, isLoading: false });
+            return;
+          }
           const user = JSON.parse(text);
-          localStorage.setItem('naita_user', JSON.stringify(user));
-          set({ currentUser: user, error: null });
+          if (user) {
+            localStorage.setItem('naita_user', JSON.stringify(user));
+            set({ currentUser: user, error: null });
 
-          const promises = [get().fetchRequests(), get().fetchNotifications()];
-          if (user.role === 'ADMIN') {
-            promises.push(get().fetchUsers(), get().fetchPendingCoordinators(), get().fetchPendingStaff());
+            const promises = [get().fetchRequests(), get().fetchNotifications()];
+            if (user.role === 'ADMIN') {
+              promises.push(get().fetchUsers(), get().fetchPendingCoordinators(), get().fetchPendingStaff());
+            }
+            await Promise.all(promises).catch(() => {});
+          } else {
+            set({ currentUser: fallbackUser, error: null });
           }
-          await Promise.all(promises).catch(() => {});
         } catch (parseError) {
-          console.error("Failed to parse user JSON:", parseError);
-          set({ error: "Failed to parse user data" });
-        }
-      } else if (res.status === 401 || res.status === 403) {
-        if (fallbackUser) {
           set({ currentUser: fallbackUser, error: null });
-          const promises = [get().fetchRequests(), get().fetchNotifications()];
-          if (fallbackUser.role === 'ADMIN') {
-            promises.push(get().fetchUsers(), get().fetchPendingCoordinators(), get().fetchPendingStaff());
-          }
-          await Promise.all(promises).catch(() => {});
-        } else {
-          set({ currentUser: null });
         }
       } else {
-        if (fallbackUser) {
-          set({ currentUser: fallbackUser, error: null });
-        } else {
-          set({ error: `Failed to initialize: ${res.status}` });
-        }
+        set({ currentUser: fallbackUser, error: null });
       }
     } catch (e) {
       console.error("Initialization failed", e);

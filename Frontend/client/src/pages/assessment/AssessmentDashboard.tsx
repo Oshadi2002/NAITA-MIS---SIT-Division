@@ -715,8 +715,7 @@ export default function AssessmentDashboard() {
                         </div>
                     ) : (
                         <div className="space-y-8">
-                            {/* Grouping by First Date for simplicity, or we could flatten */}
-                            {Array.from(new Set(filteredVivaPanels.map(p => (p.dates && p.dates.length > 0) ? p.dates[0] : 'No Date'))).sort().map(dateGroup => (
+                            {Array.from(new Set((Array.isArray(filteredVivaPanels) ? filteredVivaPanels : []).map(p => (p && p.dates && p.dates.length > 0) ? p.dates[0] : 'No Date'))).sort().map(dateGroup => (
                                 <div key={dateGroup} className="space-y-4">
                                     <div className="flex items-center gap-3">
                                         <Badge className="bg-blue-600 text-white border-none font-bold px-3 py-1">
@@ -724,12 +723,12 @@ export default function AssessmentDashboard() {
                                         </Badge>
                                         <div className="h-px flex-1 bg-blue-100" />
                                         <span className="text-xs text-muted-foreground font-medium">
-                                            {filteredVivaPanels.filter(p => (p.dates && p.dates.length > 0 ? p.dates[0] : 'No Date') === dateGroup).length} Panels Operating
+                                            {(Array.isArray(filteredVivaPanels) ? filteredVivaPanels : []).filter(p => (p && p.dates && p.dates.length > 0 ? p.dates[0] : 'No Date') === dateGroup).length} Panels Operating
                                         </span>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {filteredVivaPanels.filter(p => (p.dates && p.dates.length > 0 ? p.dates[0] : 'No Date') === dateGroup).map(panel => (
+                                        {(Array.isArray(filteredVivaPanels) ? filteredVivaPanels : []).filter(p => (p && p.dates && p.dates.length > 0 ? p.dates[0] : 'No Date') === dateGroup).map(panel => (
                                             <Card key={panel.id} className="border-t-4 border-t-blue-500 shadow-sm hover:shadow-md transition-shadow">
                                                 <CardHeader className="pb-2 bg-blue-50/20">
                                                     <div className="flex justify-between items-start">
