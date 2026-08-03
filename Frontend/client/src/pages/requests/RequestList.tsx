@@ -21,7 +21,7 @@ export default function RequestList() {
 
   if (!currentUser) return null;
 
-  const myRequests = requests;
+  const myRequests = Array.isArray(requests) ? requests : [];
 
   const filteredRequests = myRequests.filter(r =>
     (r.university_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||

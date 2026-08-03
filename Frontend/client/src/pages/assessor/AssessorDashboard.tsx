@@ -69,15 +69,17 @@ export default function AssessorDashboard() {
         }
     };
 
+    const safeAssignments = Array.isArray(assignments) ? assignments : [];
+
     const filteredAssignments = useMemo(() => {
-        if (!searchQuery) return assignments;
+        if (!searchQuery) return safeAssignments;
         const q = searchQuery.toLowerCase();
-        return assignments.filter((a: any) => 
+        return safeAssignments.filter((a: any) => 
             a.student_details?.student_reg_no?.toLowerCase().includes(q) ||
             a.student_details?.nic?.toLowerCase().includes(q) ||
             a.student_details?.full_name?.toLowerCase().includes(q)
         );
-    }, [assignments, searchQuery]);
+    }, [safeAssignments, searchQuery]);
 
     const pendingStudents = useMemo(() => filteredAssignments.filter(a => !a.marks), [filteredAssignments]);
     const passStudents = useMemo(() => filteredAssignments.filter(a => a.marks?.status === 'PASS'), [filteredAssignments]);

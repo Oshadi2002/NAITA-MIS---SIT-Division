@@ -67,26 +67,25 @@ export default function NovationRequestList() {
     const [filterUniversity, setFilterUniversity] = useState<string>("all");
     const [filterBatchYear, setFilterBatchYear] = useState<string>("all");
 
+    const safeRequests = Array.isArray(requests) ? requests : [];
+
     const universities = useMemo(() => {
-        if (!requests) return [];
-        const set = new Set(requests.map(r => r.student_details.university).filter(Boolean));
+        const set = new Set(safeRequests.map(r => r?.student_details?.university).filter(Boolean));
         return Array.from(set).sort();
-    }, [requests]);
+    }, [safeRequests]);
 
     const batchYears = useMemo(() => {
-        if (!requests) return [];
-        const set = new Set(requests.map(r => r.student_details.batch_year).filter(Boolean));
+        const set = new Set(safeRequests.map(r => r?.student_details?.batch_year).filter(Boolean));
         return Array.from(set).sort();
-    }, [requests]);
+    }, [safeRequests]);
 
     const filteredRequests = useMemo(() => {
-        if (!requests) return [];
-        return requests.filter(req => {
-            const matchUni = filterUniversity === "all" || req.student_details.university === filterUniversity;
-            const matchYear = filterBatchYear === "all" || req.student_details.batch_year === filterBatchYear;
+        return safeRequests.filter(req => {
+            const matchUni = filterUniversity === "all" || req?.student_details?.university === filterUniversity;
+            const matchYear = filterBatchYear === "all" || req?.student_details?.batch_year === filterBatchYear;
             return matchUni && matchYear;
         });
-    }, [requests, filterUniversity, filterBatchYear]);
+    }, [safeRequests, filterUniversity, filterBatchYear]);
 
     const markAsReadMutation = useMutation({
         mutationFn: (id: number) => axios.post(`/api/novation-requests/${id}/mark_as_read/`),

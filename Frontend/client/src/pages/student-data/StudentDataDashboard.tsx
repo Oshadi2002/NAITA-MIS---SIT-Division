@@ -198,16 +198,18 @@ export default function StudentDataDashboard() {
     // Global ID Search State (searches across ALL students regardless of nav path)
     const [globalSearch, setGlobalSearch] = useState("");
 
+    const safeStudents = Array.isArray(students) ? students : [];
+
     // Compute global search results - searches by student_reg_no or NIC
     const globalSearchResults = useMemo(() => {
         const q = globalSearch.trim().toLowerCase();
         if (!q) return [];
-        return students.filter(s =>
-            s.student_reg_no.toLowerCase().includes(q) ||
-            s.nic.toLowerCase().includes(q) ||
+        return safeStudents.filter(s =>
+            s.student_reg_no?.toLowerCase().includes(q) ||
+            s.nic?.toLowerCase().includes(q) ||
             s.admin_reg_number?.toLowerCase().includes(q)
         );
-    }, [students, globalSearch]);
+    }, [safeStudents, globalSearch]);
 
     useEffect(() => {
         if (currentUser?.role) fetchData();
@@ -264,14 +266,14 @@ export default function StudentDataDashboard() {
 
     // 1. Filter students based on current path
     const filteredStudents = useMemo(() => {
-        return students.filter(s => {
+        return safeStudents.filter(s => {
             if (navPath.year && s.batch_year !== navPath.year) return false;
             if (navPath.university && s.university !== navPath.university) return false;
             if (navPath.district && s.district !== navPath.district) return false;
             if (navPath.subject && s.subject !== navPath.subject) return false;
             return true;
         });
-    }, [students, navPath]);
+    }, [safeStudents, navPath]);
 
     // 2. Determine Current View Level
     const currentLevel: NavLevel = useMemo(() => {
@@ -1520,7 +1522,7 @@ function CreateLinkDialog({ onCreated }: { onCreated: () => void }) {
 
     const [selectedUni, setSelectedUni] = useState("");
 
-    const filteredCoordinators = users.filter(u =>
+    const filteredCoordinators = (Array.isArray(users) ? users : []).filter(u =>
         !selectedUni || u.university?.toLowerCase().includes(selectedUni.toLowerCase())
     );
 

@@ -39,10 +39,13 @@ export default function RequestDetail() {
 
   if (!currentUser || !params?.id) return null;
 
-  const request = requests.find(r => r.id === parseInt(params.id));
+  const safeRequests = Array.isArray(requests) ? requests : [];
+  const safeUsers = Array.isArray(users) ? users : [];
+
+  const request = safeRequests.find(r => r.id === parseInt(params.id));
   if (!request) return <div>Request not found</div>;
 
-  const inspectors = users.filter(u => u.role === 'INSPECTOR');
+  const inspectors = safeUsers.filter(u => u.role === 'INSPECTOR');
 
   const handleAdminAction = async (action: 'APPROVE' | 'REJECT' | 'NEED_CHANGES') => {
     if (action === 'APPROVE') {

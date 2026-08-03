@@ -395,12 +395,14 @@ export default function AssessmentDashboard() {
         });
     }, [filteredStudents, search, sortBy, assessmentPhase]);
 
+    const safeAssignments = Array.isArray(vivaAssignments) ? vivaAssignments : [];
+
     const allAssignments = useMemo(() => {
-        return vivaAssignments.map(a => {
-            const panel = vivaPanels.find(p => p.id === a.panel);
+        return safeAssignments.map(a => {
+            const panel = safePanels.find(p => p.id === a.panel);
             return { ...a, panel_name: panel?.name || "No Panel" };
         });
-    }, [vivaAssignments, vivaPanels]);
+    }, [safeAssignments, safePanels]);
 
     const passStudents = useMemo(() => allAssignments.filter(a => a.marks && a.marks.status === 'PASS'), [allAssignments]);
     const specialStatusStudents = useMemo(() => allAssignments.filter(a => a.marks && a.marks.status === 'SPECIAL_STATUS'), [allAssignments]);

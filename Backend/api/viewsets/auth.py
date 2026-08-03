@@ -80,11 +80,14 @@ class AuthViewSet(viewsets.ViewSet):
         auth_logout(request)
         return Response(status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def user(self, request):
-        return Response(UserSerializer(request.user).data)
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            return Response(None, status=status.HTTP_200_OK)
+        return Response(UserSerializer(user).data)
 
-    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def assessors(self, request):
         assessors = User.objects.filter(role='ASSESSOR')
         return Response(UserSerializer(assessors, many=True).data)
