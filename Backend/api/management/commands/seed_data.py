@@ -34,6 +34,14 @@ class Command(BaseCommand):
                 'first_name': 'Iresha',
                 'last_name': 'Inspector',
             },
+            {
+                'username': 'assessor@naita.lk',
+                'email': 'assessor@naita.lk',
+                'password': 'assessor123',
+                'role': 'ASSESSOR',
+                'first_name': 'NAITA',
+                'last_name': 'Assessor',
+            },
         ]
 
         for u_info in users_data:

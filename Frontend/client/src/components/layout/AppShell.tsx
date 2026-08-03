@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     const interval = setInterval(() => {
       fetchNotifications();
-    }, 30000); // Auto-refresh every 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [currentUser, fetchNotifications]);
@@ -30,14 +30,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-background text-foreground font-sans">
       <Sidebar />
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         {/* Top Header */}
-        <header className="h-16 border-b bg-card px-8 flex items-center justify-between shrink-0">
-          <h1 className="font-serif text-xl font-medium text-foreground">
+        <header className="h-16 border-b bg-card px-4 md:px-8 flex items-center justify-between shrink-0">
+          {/* Left spacer for mobile hamburger button */}
+          <div className="w-10 md:hidden" />
+          <h1 className="font-serif text-base sm:text-xl font-medium text-foreground truncate">
             Academic Placement Portal
           </h1>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -47,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-0" align="end">
+              <PopoverContent className="w-72 sm:w-80 p-0" align="end">
                 <div className="p-4 border-b">
                   <h4 className="font-semibold text-sm">Notifications</h4>
                 </div>
@@ -87,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-auto bg-muted/30 p-8">
+        <main className="flex-1 overflow-auto bg-muted/30 p-4 sm:p-6 md:p-8">
           <div className="max-w-6xl mx-auto animate-in fade-in duration-500 slide-in-from-bottom-4">
             {children}
           </div>
