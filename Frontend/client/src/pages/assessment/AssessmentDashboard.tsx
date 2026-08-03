@@ -188,11 +188,11 @@ export default function AssessmentDashboard() {
                 axios.get('/api/auth/assessors/'),
                 axios.get('/api/assessor-reports/')
             ]);
-            setVivaPanels(panelsRes.data);
-            setVivaAssignments(assignmentsRes.data);
-            setStudents(submissionsRes.data);
-            setAssessors(assessorsRes.data);
-            setAssessorReports(reportsRes.data);
+            setVivaPanels(Array.isArray(panelsRes.data) ? panelsRes.data : []);
+            setVivaAssignments(Array.isArray(assignmentsRes.data) ? assignmentsRes.data : []);
+            setStudents(Array.isArray(submissionsRes.data) ? submissionsRes.data : []);
+            setAssessors(Array.isArray(assessorsRes.data) ? assessorsRes.data : []);
+            setAssessorReports(Array.isArray(reportsRes.data) ? reportsRes.data : []);
         } catch (error) {
             console.error("Failed to fetch assessment data", error);
             toast({ title: "Error", description: "Could not load data. Please refresh and try again.", variant: "destructive" });

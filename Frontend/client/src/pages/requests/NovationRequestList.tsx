@@ -60,7 +60,7 @@ export default function NovationRequestList() {
         queryKey: ['novation-requests'],
         queryFn: async () => {
             const res = await axios.get('/api/novation-requests/');
-            return res.data;
+            return Array.isArray(res.data) ? res.data : [];
         }
     });
 

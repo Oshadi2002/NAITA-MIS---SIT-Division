@@ -220,10 +220,10 @@ export default function StudentDataDashboard() {
         try {
             if (activeTab === 'links' && (currentUser?.role === 'ADMIN' || currentUser?.role === 'UNIVERSITY_COORDINATOR')) {
                 const res = await axios.get('/api/student-links/');
-                setLinks(res.data);
+                setLinks(Array.isArray(res.data) ? res.data : []);
             } else {
                 const res = await axios.get('/api/student-submissions/');
-                setStudents(res.data);
+                setStudents(Array.isArray(res.data) ? res.data : []);
             }
         } catch (error) {
             console.error(error);
@@ -1483,7 +1483,8 @@ function CreateLinkDialog({ onCreated }: { onCreated: () => void }) {
     useEffect(() => {
         if (open) {
             axios.get('/api/management/users/').then(res => {
-                setUsers(res.data.filter((u: any) => u.role === 'UNIVERSITY_COORDINATOR'));
+                const data = Array.isArray(res.data) ? res.data : [];
+                setUsers(data.filter((u: any) => u.role === 'UNIVERSITY_COORDINATOR'));
             }).catch(e => console.error(e));
         }
     }, [open]);

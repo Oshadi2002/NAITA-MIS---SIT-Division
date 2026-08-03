@@ -49,8 +49,8 @@ export default function AssessorDashboard() {
                 axios.get('/api/assessor-reports/'),
                 axios.get('/api/assessment-marks/')
             ]);
-            setReports(reportsRes.data);
-            setAllMarks(marksRes.data);
+            setReports(Array.isArray(reportsRes.data) ? reportsRes.data : []);
+            setAllMarks(Array.isArray(marksRes.data) ? marksRes.data : []);
         } catch (error) {
             console.error("Failed to fetch history data", error);
         }
@@ -60,7 +60,7 @@ export default function AssessorDashboard() {
         setLoading(true);
         try {
             const res = await axios.get('/api/viva-assignments/');
-            setAssignments(res.data);
+            setAssignments(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
             console.error("Failed to fetch assignments", error);
             toast({ title: "Error", description: "Could not load assigned students.", variant: "destructive" });
